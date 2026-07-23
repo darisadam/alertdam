@@ -1,0 +1,91 @@
+# =============================================================================
+# PagerDam — Gitleaks Configuration
+# https://github.com/gitleaks/gitleaks
+# =============================================================================
+
+title = "PagerDam Gitleaks Config"
+
+[extend]
+# Extend the default gitleaks ruleset
+useDefault = true
+
+# =============================================================================
+# Custom Rules for PagerDam-specific secrets
+# =============================================================================
+
+[[rules]]
+  id = "pagerdam-jwt-secret"
+  description = "PagerDam hardcoded JWT secret"
+  regex = '''(?i)(jwt[_-]?secret|token[_-]?secret)\s*[=:]\s*["']?[a-zA-Z0-9/+]{32,}["']?'''
+  tags = ["secret", "jwt"]
+
+[[rules]]
+  id = "twilio-account-sid"
+  description = "Twilio Account SID"
+  regex = '''AC[a-z0-9]{32}'''
+  tags = ["secret", "twilio"]
+
+[[rules]]
+  id = "twilio-auth-token"
+  description = "Twilio Auth Token"
+  regex = '''(?i)(twilio[_-]?auth[_-]?token)\s*[=:]\s*["']?[a-z0-9]{32}["']?'''
+  tags = ["secret", "twilio"]
+
+[[rules]]
+  id = "slack-bot-token"
+  description = "Slack Bot/App Token"
+  regex = '''xox[baprs]-([0-9a-zA-Z]{10,48})?'''
+  tags = ["secret", "slack"]
+
+[[rules]]
+  id = "discord-bot-token"
+  description = "Discord Bot Token"
+  regex = '''[MN][a-zA-Z0-9_-]{23}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{27,}'''
+  tags = ["secret", "discord"]
+
+[[rules]]
+  id = "telegram-bot-token"
+  description = "Telegram Bot Token"
+  regex = '''[0-9]{8,10}:[a-zA-Z0-9_-]{35}'''
+  tags = ["secret", "telegram"]
+
+[[rules]]
+  id = "firebase-server-key"
+  description = "Firebase Server Key"
+  regex = '''AAAA[a-zA-Z0-9_-]{140,200}'''
+  tags = ["secret", "firebase", "fcm"]
+
+[[rules]]
+  id = "postgres-url"
+  description = "PostgreSQL connection string with credentials"
+  regex = '''postgres(?:ql)?://[^:]+:[^@]+@[^/]+/\S+'''
+  tags = ["secret", "database"]
+
+# =============================================================================
+# Allowlist — safe patterns to ignore
+# =============================================================================
+
+[allowlist]
+  description = "Global allowlist"
+  paths = [
+    '''.env\.example''',
+    '''CHANGELOG\.md''',
+    '''README\.md''',
+    '''docs/''',
+  ]
+  regexes = [
+    # Ignore placeholder values in example files
+    '''your[_-]?.*[_-]?here''',
+    '''<your[_-].*>''',
+    '''example[_-]?token''',
+    '''changeme''',
+    '''REPLACE_ME''',
+  ]
+  commits = []
+  stopwords = [
+    "example",
+    "placeholder",
+    "dummy",
+    "test",
+    "fake",
+  ]

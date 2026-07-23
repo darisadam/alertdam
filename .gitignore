@@ -1,0 +1,112 @@
+# =============================================================================
+# PagerDam — .gitignore
+# Multi-language: Go, Node.js/React, Flutter, General
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Environment & Secrets (NEVER COMMIT)
+# -----------------------------------------------------------------------------
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+service-account.json
+google-services.json
+GoogleService-Info.plist
+
+# -----------------------------------------------------------------------------
+# Go (Backend)
+# -----------------------------------------------------------------------------
+backend/vendor/
+backend/*.exe
+backend/*.exe~
+backend/*.dll
+backend/*.so
+backend/*.dylib
+backend/bin/
+backend/dist/
+*.test
+*.out
+coverage.out
+coverage.html
+
+# -----------------------------------------------------------------------------
+# Node.js / React (Web)
+# -----------------------------------------------------------------------------
+web/node_modules/
+web/dist/
+web/.vite/
+web/build/
+web/.cache/
+*.tsbuildinfo
+
+# -----------------------------------------------------------------------------
+# Flutter / Dart (Mobile)
+# -----------------------------------------------------------------------------
+mobile/.dart_tool/
+mobile/.packages
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/pubspec.lock
+mobile/**/*.g.dart
+mobile/**/*.freezed.dart
+mobile/android/.gradle/
+mobile/android/app/release/
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/ios/Flutter/flutter_export_environment.sh
+
+# -----------------------------------------------------------------------------
+# IDEs & Editors
+# -----------------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+*.iml
+
+# -----------------------------------------------------------------------------
+# OS
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# -----------------------------------------------------------------------------
+# Logs & Temporary Files
+# -----------------------------------------------------------------------------
+*.log
+*.tmp
+*.bak
+*.orig
+logs/
+tmp/
+temp/
+
+# -----------------------------------------------------------------------------
+# Docker
+# -----------------------------------------------------------------------------
+.docker/
+
+# -----------------------------------------------------------------------------
+# Terraform / Infrastructure (future)
+# -----------------------------------------------------------------------------
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
