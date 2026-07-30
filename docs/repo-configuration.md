@@ -269,6 +269,78 @@ gh api repos/darisadam/alertdam/community/profile --jq '{health_percentage, file
 
 ---
 
+## Verified behaviour
+
+Every claim above was tested against the live repository rather than assumed.
+Re-run these after any ruleset change.
+
+**Direct push to `main` is rejected, server-side, with the local hook bypassed.**
+The local `pre-push` hook fires first, so it must be skipped to test the server:
+
+```bash
+git switch -c chore/scratch && echo x > .scratch && git add .scratch
+git commit --no-verify -m "chore: scratch"
+git push --no-verify origin HEAD:main
+```
+
+```
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: - Changes must be made through a pull request.
+remote: - 4 of 4 required status checks are expected.
+```
+
+**The maintainer merges their own PR with zero approvals.** The `review-policy`
+status reports `author darisadam is a maintainer; no approval required`, and the
+merge succeeds with no review. Confirmed on PR #20 and on every PR in this
+hardening series.
+
+**The maintainer cannot bypass the ruleset.**
+
+```bash
+$ gh api repos/darisadam/alertdam/rulesets/20018536 --jq '{current_user_can_bypass, bypass_actors}'
+{"bypass_actors":[],"current_user_can_bypass":"never"}
+```
+
+**The convention gate rejects real violations.** A PR titled `update feature`,
+with a commit whose subject was `update feature` and whose trailers included
+`Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`, a
+`Generated with [Claude Code]` line and a 🤖 marker — all committed with
+`--no-verify` to simulate a bypassed local hook — produced:
+
+```
+✗ header must be '<type>[(scope)][!]: <description>'
+✗ AI-attribution trailer found (Co-Authored-By / Assisted-by / Generated-by naming an AI)
+✗ AI-generation notice found ("Generated with ...")
+✗ AI vendor no-reply address found
+✗ robot emoji marker found
+validated 2 commit message(s)
+```
+
+Note the gate fails fast: the PR title is checked before the body, and the body
+before the commits, so fixing one violation can reveal the next. That is a
+deliberate trade of completeness for a short feedback loop on the check that
+matters most (the title, which becomes the commit on `main`).
+
+**Dependabot auto-merge respects the major/minor split.** With the full config
+live, patch and minor bumps (#10 chi 5.3.0→5.3.1, #17 intl 0.19→0.20.3) merged
+themselves once CI was green, while every major bump (#9 postgres 16→18, #14
+lucide-react 0.460→1.27, #15 @types/node 22→26, #18 flutter_secure_storage 9→10,
+#19 flutter_local_notifications 17→22) was labelled `status/needs-review` and left
+for a human.
+
+> One caveat this surfaced: Dependabot classifies `0.19 → 0.20` as *semver-minor*,
+> so it auto-merges. For `0.x` dependencies a minor bump can be breaking by
+> convention. If that becomes a problem, add an `ignore` rule for
+> `version-update:semver-minor` on the specific `0.x` packages that matter.
+
+**`pull_request_target` workflows cannot run until they are on the base branch.**
+`Conventions`, `Review policy`, `Labeler` and `Dependabot auto-merge` did not
+execute on the pull request that introduced them, because that trigger reads the
+workflow definition from the *base* ref. This is expected, and it is why
+`Conventions` and `review-policy` were added to the required-check list only after
+a subsequent PR proved they run. Anyone adding a new `pull_request_target`
+workflow should expect the same one-PR delay.
+
 ## Known gaps
 
 - **Bus factor is 1.** With no bypass actors and a single admin, the only recovery
