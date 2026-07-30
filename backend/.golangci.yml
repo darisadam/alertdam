@@ -1,0 +1,110 @@
+# golangci-lint configuration.
+#
+# NOTE: this uses the v2 schema (`version: "2"`). golangci-lint v2 rejects v1
+# configs outright, so do not copy v1 examples into this file. The pinned
+# version lives in .tool-versions and the GOLANGCI_LINT_VERSION repo variable.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: standard
+  enable:
+    # Correctness
+    - bodyclose         # HTTP response bodies must be closed
+    - contextcheck      # do not drop context
+    - copyloopvar
+    - durationcheck
+    - errorlint         # use errors.Is/As, %w
+    - exhaustive        # switches over enum-like types (Severity, EventAction)
+    - makezero
+    - nilerr
+    - noctx             # no HTTP requests without a context
+    - rowserrcheck      # sql.Rows.Err() — matters for the pgx queue
+    - sqlclosecheck     # close sql.Rows/Stmt
+    - reassign
+    # Security
+    - gosec
+    # Style / clarity
+    - gocritic
+    - misspell
+    - revive
+    - unconvert
+    - unparam
+    - wastedassign
+    - whitespace
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    exhaustive:
+      default-signifies-exhaustive: true
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        - importShadow
+        - unnamedResult
+    gosec:
+      excludes:
+        # G104 duplicates errcheck.
+        - G104
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment  # readability over struct packing at this stage
+    misspell:
+      locale: US
+    revive:
+      rules:
+        - name: exported
+          arguments: ["disableStutteringCheck"]
+        - name: package-comments
+          disabled: true
+        - name: var-naming
+        - name: indent-error-flow
+        - name: errorf
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: unreachable-code
+        - name: redefines-builtin-id
+    staticcheck:
+      checks:
+        - all
+
+  exclusions:
+    presets:
+      - comments
+      - std-error-handling
+    rules:
+      # Tests may use weaker crypto/rand, ignore some errors, and be long.
+      - path: _test\.go
+        linters:
+          - gosec
+          - unparam
+          - errcheck
+      # Migrations are SQL embedded in Go strings, not logic.
+      - path: migrations/
+        linters:
+          - gosec
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/darisadam/alertdam
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

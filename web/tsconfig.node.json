@@ -1,0 +1,21 @@
+{
+  // The build/tooling config files run in Node, not the browser, and were not
+  // type-checked at all before: tsconfig.json limits `include` to ["src"], so
+  // vite.config.ts (which uses `path` and `__dirname`) escaped checking.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true
+  },
+  "include": ["vite.config.ts", "vitest.config.ts", "tailwind.config.ts"]
+}

@@ -1,0 +1,26 @@
+# OSV-Scanner configuration.
+#
+# osv-scanner is the cross-ecosystem vulnerability gate in CI. It is the ONLY
+# vulnerability coverage for the Dart/pub ecosystem — Dependabot does not issue
+# security advisories for pub.
+#
+# Every ignore below must carry a reason and a review date. Re-evaluate on the
+# review date rather than letting entries accumulate silently.
+
+[[IgnoredVulns]]
+id = "GHSA-qwww-vcr4-c8h2"
+reviewNextDate = "2026-10-01"
+reason = """
+React Router RSC-mode CSRF bypass, affecting >=7.12.0 <8.3.0.
+
+No fixed version is published: the advisory's own remediation is to downgrade to
+7.11.0, but 7.11.0 carries fourteen other high-severity advisories including an
+unauthenticated RCE via vendored turbo-stream (GHSA on react-router <=7.14.1),
+several open redirects and stored XSS. Staying on 7.18.x is strictly safer.
+
+Not exploitable here: web/ is a pure client-side SPA using BrowserRouter. It has
+no server, no React Server Components, no loaders and no actions, so the RSC
+request-processing path the advisory describes is never reached.
+
+Revisit when react-router 8.3.0 ships, then remove this entry.
+"""

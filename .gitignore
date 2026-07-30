@@ -54,7 +54,10 @@ mobile/.packages
 mobile/build/
 mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
-mobile/pubspec.lock
+# mobile/pubspec.lock is deliberately NOT ignored: this is an application, not a
+# library, and Dart's guidance is that applications commit their lockfile.
+# Without it, CI resolution is non-reproducible and osv-scanner — the only
+# vulnerability coverage for the Dart ecosystem — has nothing to read.
 mobile/**/*.g.dart
 mobile/**/*.freezed.dart
 mobile/android/.gradle/
