@@ -170,6 +170,11 @@ policy — is documented in [`docs/repo-configuration.md`](docs/repo-configurati
 | Phase 2: Hosted Beta | 📅 Planned | Managed cloud — zero maintenance hosting |
 | Phase 3: SaaS Enterprise | 📅 Planned | Built-in telephony, advanced analytics |
 
+The concrete Phase 1 scope is written down in [`docs/plan/`](docs/plan/): the
+[v1.0.0 PRD](docs/plan/prd-v1.md) (requirements and release criteria) and the
+[implementation plan](docs/plan/implementation-plan.md) (milestones M0–M9,
+failure-mode matrix, staffing scenarios).
+
 ---
 
 ## 🤝 Contributing
