@@ -16,7 +16,7 @@ function App() {
         <nav className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col p-4 gap-1">
           <div className="flex items-center gap-2 px-3 py-4 mb-4">
             <span className="text-2xl">🚨</span>
-            <span className="text-white font-bold text-lg">PagerDam</span>
+            <span className="text-white font-bold text-lg">AlertDam</span>
           </div>
           {[
             { path: '/dashboard',    label: '📊 Dashboard' },

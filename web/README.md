@@ -1,6 +1,6 @@
-# Web Dashboard — PagerDam
+# Web Dashboard — AlertDam
 
-React 19 + Vite + Tailwind CSS web dashboard for PagerDam.
+React 19 + Vite + Tailwind CSS web dashboard for AlertDam.
 
 ## Requirements
 

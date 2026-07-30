@@ -1,6 +1,6 @@
-# Backend — PagerDam Go Engine
+# Backend — AlertDam Go Engine
 
-The PagerDam backend is a single Go binary that handles all alert ingestion, escalation, scheduling, and notification delivery.
+The AlertDam backend is a single Go binary that handles all alert ingestion, escalation, scheduling, and notification delivery.
 
 ## Requirements
 
@@ -12,7 +12,7 @@ The PagerDam backend is a single Go binary that handles all alert ingestion, esc
 ```
 backend/
 ├── cmd/
-│   └── pagerdam/
+│   └── alertdam/
 │       └── main.go          # Application entry point
 ├── internal/
 │   ├── api/                 # HTTP router and handlers
@@ -38,9 +38,9 @@ backend/
 go mod download
 
 # Run locally (requires PostgreSQL)
-export DATABASE_URL=postgres://pagerdam:pagerdam@localhost:5432/pagerdam?sslmode=disable
+export DATABASE_URL=postgres://alertdam:alertdam@localhost:5432/alertdam?sslmode=disable
 export JWT_SECRET=your-dev-secret
-go run ./cmd/pagerdam/...
+go run ./cmd/alertdam/...
 
 # Or use the root Makefile:
 make dev-backend

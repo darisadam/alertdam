@@ -1,28 +1,32 @@
 <div align="center">
-  <h1>🚨 PagerDam</h1>
+  <h1>🚨 AlertDam</h1>
   <p><strong>Open-source, developer-first incident management & on-call alerting platform.</strong></p>
-  <p>The self-hosted alternative to PagerDuty and Grafana OnCall — built for ChatOps-first teams.</p>
+  <p>Self-hosted, ChatOps-first incident response for engineering teams — a single Go binary and PostgreSQL.</p>
 
   [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-  [![Go Version](https://img.shields.io/badge/go-1.23+-00ADD8?logo=go)](https://golang.org/)
+  [![Go Version](https://img.shields.io/github/go-mod/go-version/darisadam/alertdam?filename=backend%2Fgo.mod&logo=go)](backend/go.mod)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-  [![GitHub Stars](https://img.shields.io/github/stars/darisadam/PagerDam?style=social)](https://github.com/darisadam/PagerDam/stargazers)
+  [![GitHub Stars](https://img.shields.io/github/stars/darisadam/alertdam?style=social)](https://github.com/darisadam/alertdam/stargazers)
 </div>
 
 ---
 
-## ✨ Why PagerDam?
+> [!WARNING]
+> **Project status: pre-alpha.** The repository layout, database schema and API surface are in place, but the backend handlers are still stubs — most endpoints return `501 Not Implemented`. Nothing here is ready to page a human yet. Follow the [roadmap](#️-roadmap), or [start a discussion](https://github.com/darisadam/alertdam/discussions) if you want to help build it.
 
-Modern engineering teams already live in Slack, Discord, and Telegram. PagerDam treats **chat as the primary control plane** — no context switching to another web UI during a 3 AM incident.
+---
 
-| Feature | PagerDam | PagerDuty | Grafana OnCall (OSS) |
-|---|---|---|---|
-| Self-hosted | ✅ | ❌ | ⚠️ Archived |
-| ChatOps-first | ✅ | Partial | Partial |
-| Single binary | ✅ | ❌ | ❌ |
-| Zero Redis/MQ | ✅ | ❌ | ❌ |
-| Free forever tier | ✅ | ❌ | ✅ (archived) |
-| Mobile push (DND bypass) | ✅ | ✅ | ❌ |
+## ✨ Why AlertDam?
+
+Modern engineering teams already live in Slack, Discord, and Telegram. AlertDam treats **chat as the primary control plane** — no context switching to another web UI during a 3 AM incident.
+
+Three design commitments shape everything else:
+
+| Commitment | What it means in practice |
+|---|---|
+| **Operational minimalism** | One compiled Go binary plus PostgreSQL. No Redis, no RabbitMQ, no Kafka, no Kubernetes required. |
+| **ChatOps first** | Acknowledge, resolve and escalate from the chat client you already have open. The web dashboard is for configuration and history, not for firefighting. |
+| **Self-hosted by default** | Your alert data, escalation policies and phone numbers stay on infrastructure you control. Bring your own Twilio/WhatsApp keys, or stay entirely free using Discord and Telegram as delivery targets. |
 
 ---
 
@@ -50,6 +54,8 @@ Modern engineering teams already live in Slack, Discord, and Telegram. PagerDam 
 - **Web:** React 19 + Vite + Tailwind CSS
 - **Mobile:** Flutter (iOS + Android) with native Critical Alerts & DND bypass
 
+See [`docs/architecture.md`](docs/architecture.md) for the reasoning behind the PostgreSQL-as-queue design.
+
 ---
 
 ## 🚀 Quick Start (Docker Compose)
@@ -58,24 +64,27 @@ The entire stack runs with two containers — the Go binary and PostgreSQL.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/darisadam/PagerDam.git
-cd PagerDam
+git clone https://github.com/darisadam/alertdam.git
+cd alertdam
 
 # 2. Copy and configure environment variables
 cp .env.example .env
-# Edit .env with your Slack/Discord tokens, etc.
+# Edit .env — JWT_SECRET is required and deliberately has no default
 
 # 3. Start everything
 docker compose up -d
 
-# PagerDam is now running at http://localhost:8080
+# AlertDam is now running at http://localhost:8080
+curl -fsS http://localhost:8080/health
 ```
 
 > **That's it.** No Kubernetes, no Redis, no message broker.
 
 ---
 
-## 📋 Core Features
+## 📋 Scope
+
+The capabilities below are the Phase 1 target, not a description of what ships today — see the status warning above. Track progress in [issues](https://github.com/darisadam/alertdam/issues).
 
 ### 🔔 Alert Ingestion & Deduplication
 - Generic webhook endpoint (`POST /v1/events`) compatible with Prometheus Alertmanager, Grafana, Datadog, and CloudWatch
@@ -88,24 +97,24 @@ docker compose up -d
 - Exports `.ics` feed (RFC 5545) — sync directly to Google Calendar, Apple Calendar, or Outlook
 
 ### 🔗 Escalation Policies
-- Chain-based routing: e.g., Step 1: Slack → Step 2: Mobile Push (5 min) → Step 3: Voice Call (15 min)
+- Chain-based routing: e.g. Step 1: Slack → Step 2: Mobile Push (5 min) → Step 3: Voice Call (15 min)
 - Fully configurable per-team and per-severity
 
-### 💬 ChatOps Engine (The Differentiator)
-- **Slack & Microsoft Teams:** Rich alert cards with `Acknowledge`, `Resolve`, `Escalate` action buttons
-- **Discord & Telegram:** Thread-based incident grouping — ideal for OSS/startup teams on free plans
-- **WhatsApp Business API:** Low-latency delivery for regions with expensive SMS
-- **Automated war rooms:** Auto-create a Zoom bridge on P1 Critical alerts
+### 💬 ChatOps Engine (the differentiator)
+- **Slack & Microsoft Teams:** rich alert cards with `Acknowledge`, `Resolve`, `Escalate` action buttons
+- **Discord & Telegram:** thread-based incident grouping — ideal for OSS and startup teams on free plans
+- **WhatsApp Business API:** low-latency delivery for regions where SMS is expensive
+- **Automated war rooms:** auto-create a conference bridge on P1 critical alerts
 
 ### 📱 Mobile Application
-- **iOS Critical Alerts:** Bypass Silent/Focus mode natively
-- **Android DND bypass:** Uses full-volume notification channels
-- **SIP/WebRTC client:** Receive VoIP voice calls directly in the app, bypassing carrier unreliability
-- Rich push action buttons: Acknowledge without opening the app
+- **iOS Critical Alerts:** bypass Silent/Focus mode natively
+- **Android DND bypass:** full-volume notification channels
+- **SIP/WebRTC client:** receive VoIP voice calls in-app, bypassing carrier unreliability
+- Rich push action buttons: acknowledge without opening the app
 
 ### 🔒 Security & Auth
-- OAuth 2.0, SAML 2.0, and OIDC — integrates with Okta, Google Workspace, Azure AD
-- Bring Your Own Keys (BYOK) for Twilio and WhatsApp — 100% free via Discord/Telegram targets
+- OAuth 2.0, SAML 2.0 and OIDC — integrates with common enterprise identity providers
+- Bring Your Own Keys (BYOK) for Twilio and WhatsApp; entirely free via Discord/Telegram targets
 
 ---
 
@@ -116,13 +125,13 @@ All configuration is via environment variables. Copy `.env.example` to `.env` to
 | Variable | Description | Required |
 |---|---|---|
 | `DATABASE_URL` | PostgreSQL connection string | ✅ |
-| `JWT_SECRET` | Secret for signing JWT tokens | ✅ |
-| `SLACK_BOT_TOKEN` | Slack Bot OAuth token | For Slack |
+| `JWT_SECRET` | Secret for signing JWT tokens (64+ characters) | ✅ |
+| `SLACK_BOT_TOKEN` | Slack bot OAuth token | For Slack |
 | `DISCORD_BOT_TOKEN` | Discord bot token | For Discord |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token | For Telegram |
-| `TWILIO_ACCOUNT_SID` | Twilio Account SID | For voice calls |
-| `TWILIO_AUTH_TOKEN` | Twilio Auth Token | For voice calls |
-| `FCM_SERVER_KEY` | Firebase Cloud Messaging key | For mobile push |
+| `TWILIO_ACCOUNT_SID` | Twilio account SID | For voice calls |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token | For voice calls |
+| `FIREBASE_PROJECT_ID` | Firebase project for FCM push | For mobile push |
 
 See [`.env.example`](.env.example) for the full list.
 
@@ -131,13 +140,13 @@ See [`.env.example`](.env.example) for the full list.
 ## 📁 Repository Structure
 
 ```
-PagerDam/
+alertdam/
 ├── backend/          # Go backend engine (single binary)
 ├── web/              # React + Vite + Tailwind web dashboard
 ├── mobile/           # Flutter mobile app (iOS + Android)
 ├── docs/             # Documentation
 ├── deploy/           # Docker & Kubernetes manifests
-├── .github/          # CI/CD workflows, issue & PR templates
+├── .github/          # Issue & PR templates, Dependabot config
 ├── docker-compose.yml
 ├── .env.example
 └── Makefile
@@ -151,32 +160,42 @@ PagerDam/
 |---|---|---|
 | Phase 1: Open Source MVP | 🚧 In Progress | Self-hosted, ChatOps core, Docker deploy |
 | Phase 2: Hosted Beta | 📅 Planned | Managed cloud — zero maintenance hosting |
-| Phase 3: SaaS Enterprise | 📅 Planned | Built-in telephony, SOC2, advanced analytics |
+| Phase 3: SaaS Enterprise | 📅 Planned | Built-in telephony, advanced analytics |
 
 ---
 
 ## 🤝 Contributing
 
-We welcome all contributions! Please read our [Contributing Guide](CONTRIBUTING.md) before opening a PR.
+Contributions are very welcome. Please read the [Contributing Guide](CONTRIBUTING.md) before opening a PR.
 
 1. Fork the repository
-2. Create your feature branch: `git checkout -b feat/my-feature`
+2. Create your branch: `git switch -c feat/my-feature`
 3. Commit using [Conventional Commits](https://www.conventionalcommits.org/): `git commit -m "feat: add discord integration"`
-4. Push and open a Pull Request against `main`
+4. Push and open a pull request against `main`
+
+Branch names, commit messages and PR titles are checked automatically. Run the same checks locally with `make setup` (installs git hooks) and `make verify`.
 
 ---
 
 ## 🔐 Security
 
-Found a security vulnerability? Please **do not** open a public issue. See [SECURITY.md](SECURITY.md) for our responsible disclosure process.
+Found a security vulnerability? Please **do not** open a public issue — [report it privately](https://github.com/darisadam/alertdam/security/advisories/new). See [SECURITY.md](SECURITY.md) for the full disclosure process.
 
 ---
 
 ## 📄 License
 
-PagerDam is distributed under the **Apache License 2.0**. See [LICENSE](LICENSE) for full details.
+AlertDam is distributed under the **Apache License 2.0**. See [LICENSE](LICENSE) for full details.
 
-> The Apache 2.0 license allows corporate environments to safely adopt and deploy PagerDam internally without copyleft (GPL) restrictions.
+> Apache 2.0 lets corporate environments adopt and deploy AlertDam internally without copyleft (GPL) restrictions.
+
+---
+
+## ™️ Trademarks
+
+AlertDam is an independent open-source project. It is not affiliated with, endorsed by, or sponsored by any of the third-party services it integrates with. All product names, logos and brands referenced here are the property of their respective owners and are used solely for identification. See [TRADEMARKS.md](TRADEMARKS.md).
+
+> Formerly named *PagerDam*; renamed to AlertDam in July 2026. Old repository URLs redirect here.
 
 ---
 

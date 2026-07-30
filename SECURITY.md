@@ -16,7 +16,7 @@
 If you discover a security vulnerability, please use one of the following channels:
 
 1. **GitHub Private Vulnerability Reporting** (preferred):
-   Navigate to [Security → Advisories](https://github.com/darisadam/PagerDam/security/advisories/new) and click **"Report a vulnerability"**.
+   Navigate to [Security → Advisories](https://github.com/darisadam/alertdam/security/advisories/new) and click **"Report a vulnerability"**.
 
 2. **Email:** Send details to the maintainer via the email listed on their [GitHub profile](https://github.com/darisadam).
 
@@ -49,7 +49,7 @@ We follow a **responsible disclosure** model. We ask that you do not publicly di
 
 - Always use a strong, unique `JWT_SECRET` (minimum 64 characters)
 - Keep your PostgreSQL instance firewalled and not publicly accessible
-- Run PagerDam behind a TLS-terminating reverse proxy (Nginx, Caddy, Traefik)
+- Run AlertDam behind a TLS-terminating reverse proxy (Nginx, Caddy, Traefik)
 - Rotate your integration tokens (Slack, Discord, Twilio) regularly
 - Enable `secret_scanning_push_protection` on your forks (already enabled on this repo)
 - Run `make secrets-scan` before committing to catch accidental credential leaks

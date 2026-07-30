@@ -1,8 +1,8 @@
-# PagerDam — System Architecture
+# AlertDam — System Architecture
 
 ## Overview
 
-PagerDam is a **single-binary, self-hosted** incident management platform. The entire stack runs via two Docker containers: the Go binary and PostgreSQL.
+AlertDam is a **single-binary, self-hosted** incident management platform. The entire stack runs via two Docker containers: the Go binary and PostgreSQL.
 
 ```
 [Monitoring Sources]           [Chat Platforms]
@@ -14,7 +14,7 @@ PagerDam is a **single-binary, self-hosted** incident management platform. The e
          └──────────────┬─────────────────┘
                         ▼
          ┌─────────────────────────────┐
-         │      PagerDam Go Binary     │
+         │      AlertDam Go Binary     │
          │                             │
          │  ┌──────────────────────┐   │
          │  │  Alert Ingestion     │   │  POST /v1/events

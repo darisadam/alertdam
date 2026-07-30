@@ -1,21 +1,21 @@
 # =============================================================================
-# PagerDam — Gitleaks Configuration
+# AlertDam — Gitleaks Configuration
 # https://github.com/gitleaks/gitleaks
 # =============================================================================
 
-title = "PagerDam Gitleaks Config"
+title = "AlertDam Gitleaks Config"
 
 [extend]
 # Extend the default gitleaks ruleset
 useDefault = true
 
 # =============================================================================
-# Custom Rules for PagerDam-specific secrets
+# Custom Rules for AlertDam-specific secrets
 # =============================================================================
 
 [[rules]]
-  id = "pagerdam-jwt-secret"
-  description = "PagerDam hardcoded JWT secret"
+  id = "alertdam-jwt-secret"
+  description = "AlertDam hardcoded JWT secret"
   regex = '''(?i)(jwt[_-]?secret|token[_-]?secret)\s*[=:]\s*["']?[a-zA-Z0-9/+]{32,}["']?'''
   tags = ["secret", "jwt"]
 

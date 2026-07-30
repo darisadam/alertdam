@@ -11,8 +11,8 @@
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/darisadam/PagerDam.git
-cd PagerDam
+git clone https://github.com/darisadam/alertdam.git
+cd AlertDam
 
 # 2. Configure environment
 cp .env.example .env
@@ -35,14 +35,14 @@ curl http://localhost:8080/health
 The `deploy/docker/Dockerfile` uses a multi-stage build to produce a minimal binary image (~20MB).
 
 ```bash
-docker build -f deploy/docker/Dockerfile -t pagerdam:latest .
+docker build -f deploy/docker/Dockerfile -t alertdam:latest .
 ```
 
 ### 2. Use a reverse proxy (Nginx / Caddy)
 
 **Caddy (recommended — auto SSL):**
 ```caddyfile
-pagerdam.yourdomain.com {
+alertdam.example.com {
   reverse_proxy localhost:8080
 }
 ```
@@ -51,7 +51,7 @@ pagerdam.yourdomain.com {
 ```nginx
 server {
   listen 443 ssl;
-  server_name pagerdam.yourdomain.com;
+  server_name alertdam.example.com;
   # ... SSL config ...
   location / {
     proxy_pass http://localhost:8080;
@@ -63,27 +63,27 @@ server {
 
 ### 3. Inbound Webhooks
 
-For Slack, Discord, and Telegram to send callbacks, PagerDam must be reachable on the public internet. Ensure port 443 is open and your domain resolves correctly.
+For Slack, Discord, and Telegram to send callbacks, AlertDam must be reachable on the public internet. Ensure port 443 is open and your domain resolves correctly.
 
 Register your webhook URL in each platform:
-- **Slack:** App settings → Interactivity & Shortcuts → Request URL: `https://pagerdam.yourdomain.com/v1/webhooks/slack/actions`
-- **Telegram:** `GET https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://pagerdam.yourdomain.com/v1/webhooks/telegram`
+- **Slack:** App settings → Interactivity & Shortcuts → Request URL: `https://alertdam.example.com/v1/webhooks/slack/actions`
+- **Telegram:** `GET https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://alertdam.example.com/v1/webhooks/telegram`
 
 ### 4. Database Backups
 
 ```bash
 # Manual backup
-docker exec pagerdam-db pg_dump -U pagerdam pagerdam > backup_$(date +%Y%m%d).sql
+docker exec alertdam-db pg_dump -U alertdam alertdam > backup_$(date +%Y%m%d).sql
 
 # Restore
-docker exec -i pagerdam-db psql -U pagerdam pagerdam < backup_20260101.sql
+docker exec -i alertdam-db psql -U alertdam alertdam < backup_20260101.sql
 ```
 
 ## Environment Variables Reference
 
 See [`.env.example`](../.env.example) for the full list.
 
-## Updating PagerDam
+## Updating AlertDam
 
 ```bash
 git pull origin main

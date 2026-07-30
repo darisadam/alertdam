@@ -1,6 +1,6 @@
 # Kubernetes Deployment (Phase 2+)
 
-Kubernetes manifests for PagerDam will be added in **Phase 2 (Hosted Beta)**.
+Kubernetes manifests for AlertDam will be added in **Phase 2 (Hosted Beta)**.
 
 For now, please use the Docker Compose deployment:
 ```bash

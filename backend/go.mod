@@ -1,4 +1,4 @@
-module github.com/darisadam/pagerdam
+module github.com/darisadam/alertdam
 
 go 1.23
 
