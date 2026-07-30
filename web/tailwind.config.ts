@@ -1,15 +1,24 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
+        // Semantic tokens backed by the CSS custom properties in src/index.css.
+        // `border` in particular is required by `@apply border-border` there —
+        // without it the Tailwind build fails once PostCSS is wired up.
+        border: 'hsl(var(--border))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        card: 'hsl(var(--card))',
+        accent: 'hsl(var(--accent))',
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
         // AlertDam brand colors
         brand: {
-          50:  '#fef2f2',
+          50: '#fef2f2',
           100: '#fee2e2',
           200: '#fecaca',
           300: '#fca5a5',
@@ -24,9 +33,9 @@ export default {
         // Severity colors
         severity: {
           critical: '#dc2626',
-          high:     '#ea580c',
-          warning:  '#ca8a04',
-          info:     '#2563eb',
+          high: '#ea580c',
+          warning: '#ca8a04',
+          info: '#2563eb',
         },
       },
       fontFamily: {

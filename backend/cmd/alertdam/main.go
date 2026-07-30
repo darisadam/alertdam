@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -22,42 +24,80 @@ var (
 	date    = "unknown"
 )
 
+const (
+	defaultPort     = 8080
+	shutdownTimeout = 30 * time.Second
+)
+
+// resolvePort reads APP_PORT and validates it. Validating rather than
+// interpolating the raw environment value keeps untrusted input out of both the
+// listen address and the log line.
+func resolvePort() (int, error) {
+	raw := os.Getenv("APP_PORT")
+	if raw == "" {
+		return defaultPort, nil
+	}
+	port, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("APP_PORT must be a number, got %q: %w", raw, err)
+	}
+	if port < 1 || port > 65535 {
+		return 0, fmt.Errorf("APP_PORT must be between 1 and 65535, got %d", port)
+	}
+	return port, nil
+}
+
 func main() {
-	port := os.Getenv("APP_PORT")
-	if port == "" {
-		port = "8080"
+	if err := run(); err != nil {
+		log.Printf("fatal: %v", err)
+		os.Exit(1)
+	}
+}
+
+// run holds the real body of main so that deferred cleanup actually runs; an
+// os.Exit or log.Fatal inside main would skip every pending defer.
+func run() error {
+	port, err := resolvePort()
+	if err != nil {
+		return err
 	}
 
-	router := api.NewRouter()
-
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%s", port),
-		Handler:      router,
+		Addr:         fmt.Sprintf(":%d", port),
+		Handler:      api.NewRouter(),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Start server in a goroutine
+	serveErr := make(chan error, 1)
 	go func() {
-		log.Printf("🚨 AlertDam %s (commit %s, built %s) starting on port %s", version, commit, date, port)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("failed to start server: %v", err)
+		log.Printf("🚨 AlertDam %s (commit %s, built %s) starting on port %d", version, commit, date, port)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serveErr <- fmt.Errorf("failed to start server: %w", err)
+			return
 		}
+		serveErr <- nil
 	}()
 
-	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
 
-	log.Println("Shutting down AlertDam...")
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	select {
+	case err := <-serveErr:
+		// The listener failed before any signal arrived.
+		return err
+	case sig := <-quit:
+		log.Printf("received %s, shutting down AlertDam...", sig)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("server forced to shutdown: %v", err)
+		return fmt.Errorf("server forced to shutdown: %w", err)
 	}
 
 	log.Println("AlertDam stopped.")
+	return nil
 }

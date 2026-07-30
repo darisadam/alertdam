@@ -1,0 +1,17 @@
+# Reviewed gitleaks findings that are not secrets.
+#
+# Each entry is a fingerprint from `gitleaks git . --config .gitleaks.toml -v`.
+# Prefer adding a line here (with a reason) over widening an allowlist in
+# .gitleaks.toml, so that suppression stays narrow and auditable.
+#
+# Do NOT quote the offending value in these comments -- gitleaks scans this
+# file too, and a pasted example just creates a new finding.
+#
+# Format: <commit>:<path>:<rule-id>:<line>
+
+# backend/README.md documented the pre-rename local-development PostgreSQL
+# connection string. Those credentials were never real: they are the
+# docker-compose defaults, published in the README and .env.example on purpose
+# so that `docker compose up` works with no configuration. The commit is on main
+# and history is deliberately not rewritten, so the finding is pinned here.
+29ee01bb24cdc3675079a8c8ee6b3b461cfbf058:backend/README.md:postgres-url:41

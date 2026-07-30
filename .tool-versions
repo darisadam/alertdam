@@ -1,0 +1,6 @@
+# Single source of truth for toolchain versions, read by asdf and mise.
+# CI reads the same values through repository variables (GO_VERSION,
+# NODE_VERSION, FLUTTER_VERSION, ...) so a bump happens in one place.
+golang 1.23.0
+nodejs 22.12.0
+flutter 3.24.5

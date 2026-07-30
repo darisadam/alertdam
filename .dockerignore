@@ -1,0 +1,47 @@
+# The Docker build context is the repository root but the image only needs
+# backend/. Without this file BuildKit uploads .git, node_modules, docs and the
+# entire mobile tree on every build, and any unrelated file change busts the
+# layer cache.
+
+# Everything not needed to build the Go binary
+.git
+.github
+.gitignore
+.gitattributes
+.editorconfig
+.gitleaks.toml
+.gitleaksignore
+.tool-versions
+.nvmrc
+lefthook.yml
+scripts
+docs
+web
+mobile
+deploy/k8s
+*.md
+!backend/**/*.md
+
+# Local artefacts
+**/node_modules
+**/dist
+**/build
+**/.dart_tool
+backend/bin
+backend/coverage.out
+coverage
+.env
+.env.*
+!.env.example
+service-account.json
+google-services.json
+GoogleService-Info.plist
+*.pem
+*.key
+*.p8
+*.p12
+
+# OS / editor cruft
+.DS_Store
+.idea
+.vscode

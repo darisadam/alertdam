@@ -1,0 +1,71 @@
+# Normalise line endings so Windows contributors do not produce CRLF diffs.
+# This travels with the repository, unlike each developer's core.autocrlf.
+* text=auto eol=lf
+
+# Shell scripts MUST be LF. A CRLF hook script fails with a cryptic
+# "/bin/sh: bad interpreter" or "\r: not found".
+*.sh    text eol=lf
+*.bash  text eol=lf
+
+# Windows-native scripts need CRLF.
+*.bat   text eol=crlf
+*.ps1   text eol=crlf
+
+# Explicit text types
+*.go       text
+*.mod      text
+*.sum      text
+*.ts       text
+*.tsx      text
+*.js       text
+*.mjs      text
+*.json     text
+*.dart     text
+*.yaml     text
+*.yml      text
+*.toml     text
+*.md       text
+*.sql      text
+*.css      text
+*.html     text
+Dockerfile text
+Makefile   text
+
+# Binary — never diff, never normalise
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.ttf  binary
+*.otf  binary
+*.woff binary
+*.woff2 binary
+*.pem  binary
+*.p8   binary
+*.p12  binary
+*.jks  binary
+*.keystore binary
+
+# Generated / lock files: keep them in review, but do not show the diff and do
+# not let them skew the language statistics.
+go.sum            -diff linguist-generated
+package-lock.json -diff linguist-generated
+pubspec.lock      -diff linguist-generated
+
+# Language statistics: report Go/TypeScript/Dart, not Makefile and HTML.
+docs/**    linguist-documentation
+deploy/**  linguist-vendored
+*.md       linguist-documentation
+
+# Keep CI and tooling out of `git archive` release tarballs.
+.github/          export-ignore
+.gitattributes    export-ignore
+.gitignore        export-ignore
+.editorconfig     export-ignore
+.gitleaks.toml    export-ignore
+.gitleaksignore   export-ignore
+lefthook.yml      export-ignore
+scripts/          export-ignore

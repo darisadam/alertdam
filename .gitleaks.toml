@@ -1,6 +1,15 @@
 # =============================================================================
 # AlertDam — Gitleaks Configuration
 # https://github.com/gitleaks/gitleaks
+#
+# Run locally:
+#   make secrets-scan          # full history
+#   make secrets-scan-staged   # staged changes only (also runs as a git hook)
+#
+# Suppressing a specific finding: prefer adding its fingerprint to
+# .gitleaksignore over widening an allowlist here. Path-wide exemptions are
+# deliberately kept to a minimum -- documentation is exactly where people paste
+# real credentials by accident.
 # =============================================================================
 
 title = "AlertDam Gitleaks Config"
@@ -10,7 +19,7 @@ title = "AlertDam Gitleaks Config"
 useDefault = true
 
 # =============================================================================
-# Custom Rules for AlertDam-specific secrets
+# Custom rules for the credentials this project handles
 # =============================================================================
 
 [[rules]]
@@ -18,74 +27,111 @@ useDefault = true
   description = "AlertDam hardcoded JWT secret"
   regex = '''(?i)(jwt[_-]?secret|token[_-]?secret)\s*[=:]\s*["']?[a-zA-Z0-9/+]{32,}["']?'''
   tags = ["secret", "jwt"]
+  [rules.allowlist]
+    # ${VAR} / $VAR interpolation is a template, not a literal secret.
+    regexes = ['''\$\{?[A-Z_][A-Z0-9_]*''']
 
 [[rules]]
   id = "twilio-account-sid"
   description = "Twilio Account SID"
-  regex = '''AC[a-z0-9]{32}'''
+  # Twilio SIDs are 32 hex characters and are case-insensitive in practice;
+  # the previous [a-z0-9] class missed uppercase SIDs entirely.
+  regex = '''\bAC[0-9a-fA-F]{32}\b'''
   tags = ["secret", "twilio"]
 
 [[rules]]
   id = "twilio-auth-token"
   description = "Twilio Auth Token"
-  regex = '''(?i)(twilio[_-]?auth[_-]?token)\s*[=:]\s*["']?[a-z0-9]{32}["']?'''
+  regex = '''(?i)(twilio[_-]?auth[_-]?token)\s*[=:]\s*["']?[0-9a-f]{32}["']?'''
   tags = ["secret", "twilio"]
+  [rules.allowlist]
+    regexes = ['''\$\{?[A-Z_][A-Z0-9_]*''']
 
 [[rules]]
   id = "slack-bot-token"
   description = "Slack Bot/App Token"
-  regex = '''xox[baprs]-([0-9a-zA-Z]{10,48})?'''
+  # The trailing group was optional, so a bare "xoxb-" matched. Now the token
+  # body is required.
+  regex = '''\bxox[baprs]-[0-9a-zA-Z-]{10,72}\b'''
   tags = ["secret", "slack"]
 
 [[rules]]
   id = "discord-bot-token"
   description = "Discord Bot Token"
-  regex = '''[MN][a-zA-Z0-9_-]{23}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{27,}'''
+  regex = '''[MNO][a-zA-Z0-9_-]{23,25}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{27,38}'''
   tags = ["secret", "discord"]
 
 [[rules]]
   id = "telegram-bot-token"
   description = "Telegram Bot Token"
-  regex = '''[0-9]{8,10}:[a-zA-Z0-9_-]{35}'''
+  regex = '''\b[0-9]{8,10}:[a-zA-Z0-9_-]{35}\b'''
   tags = ["secret", "telegram"]
 
 [[rules]]
   id = "firebase-server-key"
-  description = "Firebase Server Key"
-  regex = '''AAAA[a-zA-Z0-9_-]{140,200}'''
+  description = "Firebase Cloud Messaging legacy server key"
+  regex = '''\bAAAA[a-zA-Z0-9_-]{7}:[a-zA-Z0-9_-]{140,}'''
   tags = ["secret", "firebase", "fcm"]
 
 [[rules]]
   id = "postgres-url"
-  description = "PostgreSQL connection string with credentials"
-  regex = '''postgres(?:ql)?://[^:]+:[^@]+@[^/]+/\S+'''
+  description = "PostgreSQL connection string with embedded credentials"
+  regex = '''postgres(?:ql)?://[^:\s]+:[^@\s]+@[^/\s]+/\S+'''
   tags = ["secret", "database"]
+  [rules.allowlist]
+    regexes = [
+      # Compose / shell interpolation -- the credential is not in the file.
+      '''\$\{[A-Za-z_][A-Za-z0-9_]*''',
+      # Obvious documentation placeholders.
+      '''postgres(?:ql)?://[^:\s]+:(password|changeme|secret|yourpassword|<[^>]+>)@''',
+      # The default local-dev credentials, which are public by design.
+      '''postgres(?:ql)?://alertdam:alertdam@''',
+    ]
 
 # =============================================================================
-# Allowlist — safe patterns to ignore
+# Allowlists
+#
+# NOTE: README.md, CHANGELOG.md and docs/ are intentionally *not* exempt.
 # =============================================================================
 
-[allowlist]
-  description = "Global allowlist"
+[[allowlists]]
+  description = "Environment template — placeholder values only, by definition"
+  paths = ['''^\.env\.example$''']
+
+[[allowlists]]
+  description = "Lockfiles and vendored trees: integrity hashes are not secrets"
   paths = [
-    '''.env\.example''',
-    '''CHANGELOG\.md''',
-    '''README\.md''',
-    '''docs/''',
+    '''(^|/)go\.sum$''',
+    '''(^|/)package-lock\.json$''',
+    '''(^|/)pubspec\.lock$''',
+    '''(^|/)vendor/''',
+    '''(^|/)node_modules/''',
   ]
+
+[[allowlists]]
+  description = "Explicit documentation placeholders"
+  regexTarget = "match"
   regexes = [
-    # Ignore placeholder values in example files
     '''your[_-]?.*[_-]?here''',
-    '''<your[_-].*>''',
+    '''<your[_-][^>]*>''',
     '''example[_-]?token''',
     '''changeme''',
     '''REPLACE_ME''',
+    '''XXXXXXXX''',
+    # Doc-comment example values in Go source (e.g. the IngestPayload example).
+    '''srv-abc-123-xyz''',
   ]
-  commits = []
+
+[[allowlists]]
+  description = "Stopwords"
+  # "test" was removed from this list: it is broad enough to suppress genuine
+  # findings in *_test.go files and test fixtures, which is where hardcoded
+  # credentials most often survive review.
   stopwords = [
     "example",
     "placeholder",
     "dummy",
-    "test",
     "fake",
+    "sample",
+    "notreal",
   ]

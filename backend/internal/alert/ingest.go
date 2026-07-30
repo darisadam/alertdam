@@ -2,6 +2,7 @@ package alert
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 )
@@ -54,12 +55,13 @@ type AlertDetail struct {
 // IngestHandler handles POST /v1/events
 // It validates the payload and hands off to the processing pipeline.
 func IngestHandler(w http.ResponseWriter, r *http.Request) {
+	defer func() { _ = r.Body.Close() }()
+
 	var event IngestPayload
 	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
 		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
 
 	if event.RoutingKey == "" {
 		http.Error(w, `{"error":"routing_key is required"}`, http.StatusBadRequest)
@@ -76,5 +78,9 @@ func IngestHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	w.Write([]byte(`{"status":"accepted","message":"Event received and queued for processing"}`))
+	if _, err := w.Write([]byte(`{"status":"accepted","message":"Event received and queued for processing"}`)); err != nil {
+		// The client hung up mid-response; nothing to recover, but do not
+		// swallow it silently.
+		log.Printf("alert: writing ingest response: %v", err)
+	}
 }
