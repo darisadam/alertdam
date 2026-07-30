@@ -82,8 +82,12 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          # go.mod is the single source of truth for the Go version.
-          go-version-file: backend/go.mod
+          # `stable`, not go-version-file: go.mod declares the MINIMUM language
+          # version, whereas CI should always exercise the newest patched toolchain.
+          # Pinning to the minimum means govulncheck reports every stdlib CVE fixed
+          # in a later patch release, which is noise about the runner rather than
+          # about this code.
+          go-version: stable
           cache-dependency-path: backend/go.sum
 
       - name: Check formatting
@@ -146,10 +150,10 @@ jobs:
       - name: govulncheck
         working-directory: backend
         env:
-          # govulncheck's own module requires a newer Go than the one this
-          # project targets, and the job-level GOTOOLCHAIN=local would refuse to
-          # fetch it. Allowing the toolchain to upgrade for this step only keeps
-          # the build itself pinned to the version in go.mod.
+          # govulncheck's own module can require a newer Go than the runner has
+          # installed, and the job-level GOTOOLCHAIN=local would refuse to fetch
+          # one. Scoped to this step so the build and tests stay on exactly the
+          # toolchain setup-go installed.
           GOTOOLCHAIN: auto
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
