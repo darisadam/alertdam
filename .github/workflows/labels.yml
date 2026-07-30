@@ -1,0 +1,42 @@
+name: Labels
+
+on:
+  push:
+    branches: [main]
+    # A `paths:` trigger filter is safe here precisely because this workflow
+    # provides no required status check. Never do this in ci.yml.
+    paths: ['.github/labels.yml', 'scripts/ci/sync-labels.sh']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Report changes without applying them
+        type: boolean
+        default: true
+      prune:
+        description: Delete labels that are not in the manifest (irreversible)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Sync labels
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Sync
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+          PRUNE: ${{ inputs.prune && '1' || '' }}
+        run: sh scripts/ci/sync-labels.sh

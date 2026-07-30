@@ -1,12 +1,15 @@
 <div align="center">
-  <h1>🚨 AlertDam</h1>
+  <img src="docs/assets/logo.svg" alt="" width="88" height="88">
+  <h1>AlertDam</h1>
   <p><strong>Open-source, developer-first incident management & on-call alerting platform.</strong></p>
   <p>Self-hosted, ChatOps-first incident response for engineering teams — a single Go binary and PostgreSQL.</p>
 
+  [![CI](https://github.com/darisadam/alertdam/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/darisadam/alertdam/actions/workflows/ci.yml)
+  [![CodeQL](https://github.com/darisadam/alertdam/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/darisadam/alertdam/actions/workflows/codeql.yml)
+  [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/darisadam/alertdam/badge)](https://scorecard.dev/viewer/?uri=github.com/darisadam/alertdam)
   [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
   [![Go Version](https://img.shields.io/github/go-mod/go-version/darisadam/alertdam?filename=backend%2Fgo.mod&logo=go)](backend/go.mod)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-  [![GitHub Stars](https://img.shields.io/github/stars/darisadam/alertdam?style=social)](https://github.com/darisadam/alertdam/stargazers)
 </div>
 
 ---
@@ -144,13 +147,18 @@ alertdam/
 ├── backend/          # Go backend engine (single binary)
 ├── web/              # React + Vite + Tailwind web dashboard
 ├── mobile/           # Flutter mobile app (iOS + Android)
-├── docs/             # Documentation
+├── docs/             # Documentation, ADRs, brand assets
 ├── deploy/           # Docker & Kubernetes manifests
-├── .github/          # Issue & PR templates, Dependabot config
+├── scripts/          # Convention validators, shared by git hooks and CI
+├── .github/          # CI/CD workflows, issue & PR templates, Dependabot config
 ├── docker-compose.yml
+├── lefthook.yml      # Git hooks
 ├── .env.example
 └── Makefile
 ```
+
+Repository and CI configuration — branch rules, required checks, the review
+policy — is documented in [`docs/repo-configuration.md`](docs/repo-configuration.md).
 
 ---
 

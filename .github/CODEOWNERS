@@ -1,0 +1,37 @@
+# Code owners.
+#
+# Two jobs:
+#   1. GitHub auto-requests review from the matching owner on every PR.
+#   2. scripts/ci/review-policy.sh reads the '*' catch-all to decide who is
+#      allowed to approve an outside contributor's PR. That is the single source
+#      of truth for "who is a maintainer" — keep it accurate.
+#
+# NOTE: `require_code_owner_review` is deliberately NOT enabled on the main
+# ruleset. With one maintainer who is also the sole code owner, it would demand
+# an approval only that person can give, and GitHub forbids approving your own
+# PR — making every maintainer PR permanently unmergeable. Add a second
+# maintainer here BEFORE turning that switch on.
+
+# Catch-all
+*                       @darisadam
+
+# Per-area, so delegation later is a one-line change
+/backend/               @darisadam
+/web/                   @darisadam
+/mobile/                @darisadam
+/deploy/                @darisadam
+/docs/                  @darisadam
+
+# Governance, security and CI: intentionally listed separately so a future
+# maintainer set does not silently inherit control of the enforcement machinery.
+/.github/               @darisadam
+/.github/workflows/     @darisadam
+/.github/CODEOWNERS     @darisadam
+/scripts/               @darisadam
+/SECURITY.md            @darisadam
+/.gitleaks.toml         @darisadam
+/.gitleaksignore        @darisadam
+/osv-scanner.toml       @darisadam
+/LICENSE                @darisadam
+/NOTICE                 @darisadam
+/TRADEMARKS.md          @darisadam

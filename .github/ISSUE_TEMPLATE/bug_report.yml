@@ -1,0 +1,172 @@
+name: 🐛 Bug report
+description: Something in AlertDam does not behave as documented.
+title: '[bug]: '
+labels: ['type/fix', 'status/needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file this.
+
+        **Before you start:** AlertDam is pre-alpha and most API handlers still
+        return `501 Not Implemented`. If you hit a `501`, that is expected — it is
+        unimplemented rather than broken, and the roadmap in the README is the
+        right place to look.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I reproduced this on the latest `main` (or I have stated the version below).
+          required: true
+        - label: >-
+            I have removed every secret from anything I pasted below — tokens,
+            signing secrets, connection strings, phone numbers. Issue bodies are
+            public and are NOT covered by secret scanning.
+          required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of AlertDam is affected? Select all that apply.
+      multiple: true
+      options:
+        - Backend — alert ingestion & deduplication
+        - Backend — escalation engine
+        - Backend — on-call scheduling / iCal feed
+        - Backend — REST API / auth
+        - Integration — Slack
+        - Integration — Discord
+        - Integration — Telegram
+        - Integration — Microsoft Teams
+        - Integration — WhatsApp
+        - Integration — Twilio voice
+        - Integration — inbound monitoring webhook (Alertmanager/Grafana/Datadog)
+        - Web dashboard (React)
+        - Mobile app — iOS
+        - Mobile app — Android
+        - Database / migrations
+        - Docker / deployment
+        - Documentation
+        - CI / tooling
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: AlertDam version
+      description: >-
+        A release tag, container image tag, or commit SHA
+        (`git rev-parse --short HEAD`). The running binary also logs its version
+        on startup.
+      placeholder: v0.1.0 / ghcr.io/darisadam/alertdam:0.1.0 / 3146e68
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How are you running it?
+      options:
+        - Docker Compose (the bundled stack)
+        - Standalone container image
+        - Kubernetes
+        - Built from source
+        - Not running it — this is a code or docs issue
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Host OS and architecture, plus versions. Quick way to collect them:
+        ```bash
+        uname -srm
+        docker --version
+        docker compose version
+        psql --version
+        ```
+      placeholder: |
+        Host: Ubuntu 24.04, x86_64
+        Docker: 27.3.1
+        PostgreSQL: 16.4
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: client
+    attributes:
+      label: Browser or device
+      description: >-
+        Only if the Web dashboard or Mobile app component is selected. Include the
+        browser version, or the device model and OS version.
+      placeholder: Firefox 133 / iPhone 15 Pro, iOS 18.1
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Precise enough that a maintainer can follow them on a clean install.
+      placeholder: |
+        1. `docker compose up -d`
+        2. POST the payload below to /v1/events
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: Include the HTTP status code and response body if it is an API issue.
+    validations:
+      required: true
+
+  - type: textarea
+    id: payload
+    attributes:
+      label: Relevant request payload
+      description: >-
+        The event body, webhook payload or API request involved. **Redact
+        `routing_key`, tokens and signing secrets.**
+      render: json
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: >-
+        `docker compose logs app`, or the output with `APP_LOG_LEVEL=debug`.
+        **Redact `DATABASE_URL`, `JWT_SECRET`, bot tokens and phone numbers** —
+        this field is public.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Screenshots, related issues, a workaround you found, a guess at the cause.
+    validations:
+      required: false

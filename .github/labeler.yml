@@ -1,0 +1,97 @@
+# actions/labeler v5+ syntax.
+#
+# The head-branch matchers close the loop between conventions and release notes:
+#   branch name -> type/* label -> .github/release.yml category -> release notes
+# which is what makes the `feat/xxx` branch convention earn its keep.
+
+'area/backend':
+  - changed-files:
+      - any-glob-to-any-file: ['backend/**']
+
+'area/web':
+  - changed-files:
+      - any-glob-to-any-file: ['web/**']
+
+'area/mobile':
+  - changed-files:
+      - any-glob-to-any-file: ['mobile/**']
+
+'area/db':
+  - changed-files:
+      - any-glob-to-any-file: ['backend/migrations/**']
+
+'area/deploy':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'deploy/**'
+          - 'docker-compose.yml'
+          - '.dockerignore'
+
+'area/ci':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - 'scripts/**'
+          - 'Makefile'
+          - 'lefthook.yml'
+          - '.editorconfig'
+          - '.gitattributes'
+          - '.tool-versions'
+          - '.nvmrc'
+
+'area/docs':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - '**/*.md'
+
+'area/integrations':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'backend/internal/integration/**'
+          - 'backend/internal/chat/**'
+
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.gitleaks.toml'
+          - '.gitleaksignore'
+          - 'osv-scanner.toml'
+          - 'SECURITY.md'
+          - '.github/workflows/security.yml'
+          - '.github/workflows/codeql.yml'
+          - '.github/codeql/**'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'backend/go.mod'
+          - 'backend/go.sum'
+          - 'web/package.json'
+          - 'web/package-lock.json'
+          - 'mobile/pubspec.yaml'
+          - 'mobile/pubspec.lock'
+
+'type/feat':
+  - head-branch: ['^feat/']
+
+'type/fix':
+  - head-branch: ['^fix/', '^hotfix/']
+
+'type/docs':
+  - head-branch: ['^docs/']
+
+'type/chore':
+  - head-branch: ['^chore/', '^build/', '^ci/']
+
+'type/refactor':
+  - head-branch: ['^refactor/']
+
+'type/perf':
+  - head-branch: ['^perf/']
+
+'type/test':
+  - head-branch: ['^test/']
+
+'type/style':
+  - head-branch: ['^style/']

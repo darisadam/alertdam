@@ -1,0 +1,126 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+  schedule:
+    - cron: '41 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.merge_group.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  gitleaks:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: a secret committed and then removed is still a leaked
+          # secret, and gitleaks can only see it with the whole log.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: ${{ vars.GITLEAKS_VERSION }}
+        run: |
+          set -eu
+          # The pinned release binary rather than gitleaks-action: the action
+          # requires a (free) licence key for organisation-owned repositories,
+          # which would silently start failing if AlertDam ever moves to an org.
+          curl -fsSL --retry 3 \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /tmp gitleaks
+          /tmp/gitleaks version
+
+      - name: Scan git history
+        run: /tmp/gitleaks git . --config .gitleaks.toml --redact --no-banner --verbose
+
+      - name: Scan working tree
+        run: /tmp/gitleaks dir . --config .gitleaks.toml --redact --no-banner --verbose
+
+  osv-scanner:
+    name: Dependency vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # `stable`, not go-version-file: go.mod declares the MINIMUM language
+          # version, whereas CI should always exercise the newest patched toolchain.
+          # Pinning to the minimum means govulncheck reports every stdlib CVE fixed
+          # in a later patch release, which is noise about the runner rather than
+          # about this code.
+          go-version: stable
+          cache-dependency-path: backend/go.sum
+
+      - name: Install osv-scanner
+        env:
+          OSV_SCANNER_VERSION: ${{ vars.OSV_SCANNER_VERSION }}
+        run: |
+          set -eu
+          curl -fsSL --retry 3 -o /tmp/osv-scanner \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          chmod +x /tmp/osv-scanner
+          /tmp/osv-scanner --version
+
+      - name: Scan every ecosystem
+        run: |
+          # osv-scanner is the ONLY vulnerability coverage for the Dart/pub
+          # ecosystem — Dependabot does not publish pub advisories.
+          # Ignores live in osv-scanner.toml, each with a reason and a review date.
+          /tmp/osv-scanner scan source --recursive --config=osv-scanner.toml .
+
+  scorecard:
+    name: OpenSSF Scorecard
+    # Informational, not a merge gate. Runs on main and on a schedule; the
+    # scorecard action cannot publish results from a PR context.
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          # Publishes to the public OpenSSF dashboard, which is what backs the
+          # README badge.
+          publish_results: true
+
+      - uses: github/codeql-action/upload-sarif@18420e3271f74589575af831a523c833acda327f # codeql-bundle-v2.26.2
+        with:
+          sarif_file: scorecard.sarif
+
+  # The stable required-check name for this workflow.
+  security:
+    name: Security
+    if: always()
+    needs: [gitleaks, osv-scanner]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail if any scan failed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - run: echo "Security scans passed."

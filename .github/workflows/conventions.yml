@@ -1,0 +1,97 @@
+name: Conventions
+
+on:
+  # pull_request_target, deliberately:
+  #
+  #  1. It runs in the base-repo context, so this check still reports on fork
+  #     PRs. A plain `pull_request` workflow from a fork does not run until a
+  #     maintainer clicks "Approve and run" (this repo is set to
+  #     all_external_contributors), and a required check that never reports
+  #     blocks the PR indefinitely.
+  #  2. The checkout below pins `ref` to the BASE commit, so the validator that
+  #     runs is always the trusted one from main. Under `pull_request` the
+  #     workflow and scripts come from the merge commit, which means a fork
+  #     could weaken the very rules being applied to it.
+  #
+  # Fork code is never fetched and never executed here. The PR title, body and
+  # commit messages are read through the API.
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited, ready_for_review]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.merge_group.head_ref || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conventions:
+    name: Conventions
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      IS_PR: ${{ github.event_name == 'pull_request_target' }}
+    steps:
+      - name: Check out the trusted base ref
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Test the validator itself
+        run: sh scripts/git/commit-msg-lint_test.sh
+
+      - name: Validate the PR title
+        if: env.IS_PR == 'true'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # This is the load-bearing check: the repository squash-merges with
+          # squash_merge_commit_title=PR_TITLE, so the PR title *becomes* the
+          # commit message on main, and it is what release-please reads to
+          # compute the next version.
+          echo "PR title: $PR_TITLE"
+          printf '%s' "$PR_TITLE" | sh scripts/git/commit-msg-lint.sh --stdin
+
+      - name: Validate the PR body
+        if: env.IS_PR == 'true'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # squash_merge_commit_message=PR_BODY, so the body lands in the commit
+          # message on main. Only the AI-attribution rules apply here, not the
+          # Conventional Commits grammar.
+          printf '%s\n' "$PR_BODY" | sh scripts/git/no-ai-attribution.sh --stdin
+
+      - name: Validate the branch name
+        if: env.IS_PR == 'true'
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: sh scripts/git/branch-name-lint.sh "$HEAD_REF"
+
+      - name: Validate every commit message in the PR
+        if: env.IS_PR == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: sh scripts/ci/validate-pr-commits.sh
+
+      - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: ${{ vars.ACTIONLINT_VERSION }}
+        run: |
+          set -eu
+          curl -fsSL --retry 3 \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C /tmp actionlint
+          /tmp/actionlint --version
+
+      - name: Lint the workflows
+        run: /tmp/actionlint -color

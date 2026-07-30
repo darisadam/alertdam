@@ -9,7 +9,9 @@
 
 [[IgnoredVulns]]
 id = "GHSA-qwww-vcr4-c8h2"
-reviewNextDate = "2026-10-01"
+# The ignore expires on this date and the scan starts failing again, which is the
+# point: it forces a re-evaluation rather than letting the entry rot.
+ignoreUntil = 2026-10-01
 reason = """
 React Router RSC-mode CSRF bypass, affecting >=7.12.0 <8.3.0.
 

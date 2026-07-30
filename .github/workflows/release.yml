@@ -1,0 +1,260 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to (re)publish, e.g. v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  # Never cancel a release: a half-published set of artifacts is worse than a
+  # queued one, and GHCR tags plus Sigstore log entries are not retractable.
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # release-please maintains a durable release PR. Merging it bumps versions,
+  # writes CHANGELOG.md, creates the tag and opens the GitHub Release.
+  #
+  # ⚠️ PREREQUISITE BEFORE THE FIRST RELEASE
+  #
+  # Events created by GITHUB_TOKEN do not trigger further workflow runs (GitHub's
+  # loop prevention). That means a release PR opened with GITHUB_TOKEN receives
+  # NO CI, so with required status checks it is permanently "Expected — waiting
+  # for status" and can never be merged.
+  #
+  # Fix: create a GitHub App with contents:write + pull-requests:write, install
+  # it on this repository, and set the RELEASE_APP_ID variable and
+  # RELEASE_APP_PRIVATE_KEY secret. Events from an App token DO trigger
+  # workflows. The step below falls back to GITHUB_TOKEN when the App is absent,
+  # which is fine for a dry run but will produce an unmergeable PR.
+  #
+  # Publishing is chained inside this same workflow rather than triggered by the
+  # tag push, because a GITHUB_TOKEN-created tag would not fire `on: push: tags`
+  # either.
+  # ---------------------------------------------------------------------------
+  release-please:
+    name: Prepare release
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Mint a GitHub App token if configured
+        id: app-token
+        if: vars.RELEASE_APP_ID != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Warn if the release PR will have no CI
+        if: vars.RELEASE_APP_ID == ''
+        run: |
+          echo "::warning::RELEASE_APP_ID is not set. Any release PR opened by this run \
+          was created with GITHUB_TOKEN and will therefore receive no CI, making it \
+          unmergeable while required status checks are enabled. See the comment at the \
+          top of .github/workflows/release.yml."
+
+  binaries:
+    name: Publish binaries
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # GoReleaser derives the version from `git describe` and fails with
+          # "git doesn't contain any tags" without full history and tags.
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # `stable`, not go-version-file: go.mod declares the MINIMUM language
+          # version, whereas CI should always exercise the newest patched toolchain.
+          # Pinning to the minimum means govulncheck reports every stdlib CVE fixed
+          # in a later patch release, which is noise about the runner rather than
+          # about this code.
+          go-version: stable
+          cache-dependency-path: backend/go.sum
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attest build provenance for the archives
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: 'dist/*.tar.gz,dist/*.zip,dist/checksums.txt'
+
+  image:
+    name: Publish container image
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ vars.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.release-please.outputs.tag_name }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.release-please.outputs.tag_name }}
+            type=raw,value=latest
+            type=sha,format=long
+          labels: |
+            org.opencontainers.image.title=AlertDam
+            org.opencontainers.image.description=Self-hosted, ChatOps-first incident management and on-call alerting
+            org.opencontainers.image.licenses=Apache-2.0
+
+      - id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          # No QEMU: the Dockerfile cross-compiles via $BUILDPLATFORM/$TARGETARCH.
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ needs.release-please.outputs.version }}
+            REVISION=${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+          # Registry cache, not type=gha: it survives the 7-day GHA cache
+          # eviction and does not consume the 10 GB repo cache quota. A release
+          # job must never restore from an attacker-writable cache.
+          cache-from: type=registry,ref=${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}:buildcache,mode=max
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign the image (keyless)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE: ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+
+      - name: Generate a CycloneDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+          format: cyclonedx-json
+          output-file: alertdam-sbom.cdx.json
+          upload-artifact: true
+
+      - name: Attest the SBOM with cosign
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE: ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}
+        run: |
+          cosign attest --yes --type cyclonedx \
+            --predicate alertdam-sbom.cdx.json \
+            "${IMAGE}@${DIGEST}"
+
+      # Both cosign and the GitHub attestation API, deliberately: `gh attestation
+      # verify` needs no extra tooling for GitHub users, while cosign's Rekor
+      # entry works for everyone outside that ecosystem. Both are free and fast.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-name: ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  verify:
+    name: Verify published artifacts
+    needs: [release-please, binaries, image]
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    steps:
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Verify the image signature and provenance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          IMAGE: ${{ vars.REGISTRY }}/${{ vars.IMAGE_NAME }}
+        run: |
+          set -eu
+          # Pinning the identity regexp to this workflow at a v* tag is the part
+          # that matters. Without it, verification would pass for anything signed
+          # by any workflow in any repository.
+          cosign verify "${IMAGE}:${TAG}" \
+            --certificate-identity-regexp \
+              '^https://github\.com/darisadam/alertdam/\.github/workflows/release\.yml@refs/heads/main$' \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+          gh attestation verify "oci://${IMAGE}:${TAG}" --repo "${GITHUB_REPOSITORY}"

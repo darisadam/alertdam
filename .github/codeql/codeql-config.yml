@@ -1,0 +1,21 @@
+name: AlertDam CodeQL config
+
+# security-and-quality is broader than the default suite. For an incident-
+# management tool that terminates untrusted webhooks from Slack, Discord,
+# Telegram and arbitrary monitoring systems, the extra taint-tracking queries
+# are worth the longer run time.
+queries:
+  - uses: security-and-quality
+
+paths:
+  - backend
+  - web/src
+
+paths-ignore:
+  - '**/*_test.go'
+  - '**/*.test.ts'
+  - '**/*.test.tsx'
+  - web/dist
+  - web/node_modules
+  - mobile/build
+  - '**/*.g.dart'

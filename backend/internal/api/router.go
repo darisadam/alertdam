@@ -15,7 +15,19 @@ func NewRouter() http.Handler {
 
 	// --- Middleware ---
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	// middleware.RealIP is deliberately NOT used. chi deprecated it in v5.3.0
+	// (GHSA-3fxj-6jh8-hvhx, GHSA-rjr7-jggh-pgcp, GHSA-9g5q-2w5x-hmxf) because it
+	// rewrites r.RemoteAddr from the leftmost X-Forwarded-For, or from
+	// True-Client-IP / X-Real-IP, whether or not the deployment's infrastructure
+	// actually sets those headers. Any client can therefore forge its apparent
+	// source address — which matters here, because inbound webhook endpoints are
+	// public and IP is exactly the kind of signal that ends up in an allow-list
+	// or a rate limiter.
+	//
+	// r.RemoteAddr stays as the immediate peer (the reverse proxy, in the
+	// deployment documented in docs/deployment.md). When real client IPs are
+	// needed, add middleware that parses X-Forwarded-For right-to-left against an
+	// explicitly configured set of trusted proxy CIDRs.
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Heartbeat("/health"))

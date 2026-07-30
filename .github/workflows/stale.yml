@@ -1,0 +1,68 @@
+name: Stale
+
+on:
+  schedule:
+    - cron: '13 2 * * *'
+  workflow_dispatch:
+    inputs:
+      debug_only:
+        description: Log what would happen without commenting or closing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  stale:
+    name: Mark stale issues and PRs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        with:
+          # Run with debug_only first and read the log. A misconfigured stale bot
+          # that closes 40 issues on a young project is not cleanly undoable.
+          debug-only: ${{ inputs.debug_only || false }}
+
+          days-before-issue-stale: 60
+          days-before-issue-close: 14
+          days-before-pr-stale: 30
+          days-before-pr-close: 14
+
+          stale-issue-label: stale
+          stale-pr-label: stale
+          remove-stale-when-updated: true
+
+          stale-issue-message: >-
+            This issue has had no activity for 60 days. It will close in 14 days
+            unless something changes. If it is still relevant, a comment is
+            enough to keep it open — no need to apologise for the delay.
+          stale-pr-message: >-
+            This pull request has had no activity for 30 days. It will close in
+            14 days unless something changes. If you would like help finishing
+            it, say so and a maintainer will take a look.
+          close-issue-message: >-
+            Closing after 74 days of inactivity. This is housekeeping, not a
+            judgement — comment to reopen at any time.
+          close-pr-message: >-
+            Closing after 44 days of inactivity. The branch is untouched, so
+            reopening or opening a fresh PR from it works fine.
+
+          # `good first issue` and `help wanted` are the contributor funnel and
+          # are *supposed* to sit open. Never let the bot close them.
+          exempt-issue-labels: >-
+            priority/p0-critical,priority/p1-high,security,status/blocked,
+            pinned,good first issue,help wanted,upstream
+          exempt-pr-labels: >-
+            security,dependencies,status/blocked,pinned,upstream
+          exempt-all-milestones: true
+          exempt-draft-pr: true
+
+          # Oldest first, so the operation budget is spent where it matters.
+          ascending: true
+          operations-per-run: 100
+          enable-statistics: true
