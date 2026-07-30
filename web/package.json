@@ -29,7 +29,7 @@
     "@tanstack/react-query": "^5.56.2",
     "zustand": "^5.0.0",
     "date-fns": "^4.1.0",
-    "lucide-react": "^0.460.0",
+    "lucide-react": "^1.27.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.2"
   },
