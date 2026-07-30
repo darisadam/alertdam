@@ -145,6 +145,12 @@ jobs:
 
       - name: govulncheck
         working-directory: backend
+        env:
+          # govulncheck's own module requires a newer Go than the one this
+          # project targets, and the job-level GOTOOLCHAIN=local would refuse to
+          # fetch it. Allowing the toolchain to upgrade for this step only keeps
+          # the build itself pinned to the version in go.mod.
+          GOTOOLCHAIN: auto
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
   web:
@@ -197,11 +203,44 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+      # Flutter is installed from the pinned SDK archive rather than via
+      # subosito/flutter-action. That action internally calls `actions/cache@v5`
+      # — a mutable tag — and this repository sets `sha_pinning_required: true`,
+      # which (correctly) rejects unpinned references nested inside third-party
+      # composite actions. Rather than weaken the pinning policy for a
+      # transitive dependency we do not control, the SDK is downloaded directly.
+      - name: Cache the Flutter SDK
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          flutter-version: ${{ vars.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
+          path: |
+            ${{ runner.temp }}/flutter
+            ~/.pub-cache
+          key: flutter-${{ runner.os }}-${{ vars.FLUTTER_VERSION }}-${{ hashFiles('mobile/pubspec.yaml') }}
+          restore-keys: |
+            flutter-${{ runner.os }}-${{ vars.FLUTTER_VERSION }}-
+
+      - name: Install Flutter
+        working-directory: ${{ runner.temp }}
+        env:
+          FLUTTER_VERSION: ${{ vars.FLUTTER_VERSION }}
+        run: |
+          set -eu
+          if [ ! -x "${RUNNER_TEMP}/flutter/bin/flutter" ]; then
+            url="https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+            echo "downloading $url"
+            curl -fsSL --retry 3 -o flutter.tar.xz "$url"
+            tar -xf flutter.tar.xz
+            rm -f flutter.tar.xz
+          else
+            echo "restored from cache"
+          fi
+          echo "${RUNNER_TEMP}/flutter/bin" >> "$GITHUB_PATH"
+          echo "${RUNNER_TEMP}/flutter/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+
+      - name: Report versions
+        run: |
+          flutter --version
+          dart --version
 
       - run: flutter pub get
       - name: Check formatting
@@ -279,19 +318,41 @@ jobs:
           docker rm -f alertdam-ci
           exit 1
 
-      - name: Scan image for vulnerabilities
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: alertdam:ci
-          format: table
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
+      # Trivy is installed as a pinned binary rather than via
+      # aquasecurity/trivy-action, which internally calls
+      # aquasecurity/setup-trivy — a nested action that would need its own
+      # allow-list entry. Fewer trust relationships for a few lines of shell.
+      - name: Install Trivy
         env:
-          # Pull the DB from a mirror to avoid rate limiting on the shared
-          # runner IP pool, which is a common source of flaky failures.
+          TRIVY_VERSION: ${{ vars.TRIVY_VERSION }}
+        run: |
+          set -eu
+          curl -fsSL --retry 3 \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
+            | tar -xz -C /tmp trivy
+          /tmp/trivy --version
+
+      - name: Cache the Trivy vulnerability DB
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/trivy
+          # Rotate daily. An uncached Trivy pulls its DB on every run and is a
+          # top source of flaky required checks via registry rate limiting.
+          key: trivy-db-${{ github.run_id }}
+          restore-keys: trivy-db-
+
+      - name: Scan image for vulnerabilities
+        env:
+          # Mirror the DB to avoid rate limiting on the shared runner IP pool.
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
           TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
+        run: |
+          /tmp/trivy image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --format table \
+            alertdam:ci
 
   migrations:
     name: Database migrations
