@@ -10,9 +10,9 @@ import (
 type EventAction string
 
 const (
-	EventActionTrigger    EventAction = "trigger"
+	EventActionTrigger     EventAction = "trigger"
 	EventActionAcknowledge EventAction = "acknowledge"
-	EventActionResolve    EventAction = "resolve"
+	EventActionResolve     EventAction = "resolve"
 )
 
 // Severity levels for alert payloads.
