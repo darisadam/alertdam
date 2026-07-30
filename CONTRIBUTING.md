@@ -1,6 +1,6 @@
-# Contributing to PagerDam
+# Contributing to AlertDam
 
-Thank you for your interest in contributing to PagerDam! 🎉
+Thank you for your interest in contributing to AlertDam! 🎉
 
 This document outlines the conventions and processes to follow when contributing.
 
@@ -29,12 +29,12 @@ By participating in this project, you agree to abide by our Code of Conduct. Ple
 1. **Fork** the repository on GitHub
 2. **Clone** your fork locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/PagerDam.git
-   cd PagerDam
+   git clone https://github.com/YOUR_USERNAME/AlertDam.git
+   cd AlertDam
    ```
 3. **Add upstream** remote:
    ```bash
-   git remote add upstream https://github.com/darisadam/PagerDam.git
+   git remote add upstream https://github.com/darisadam/alertdam.git
    ```
 4. **Set up** your local environment:
    ```bash
@@ -129,7 +129,7 @@ git commit -m "chore(deps): upgrade go to 1.23"
 ```bash
 cd backend
 go mod download
-go run ./cmd/pagerdam/... # Start the server
+go run ./cmd/alertdam/... # Start the server
 ```
 
 ### Web Dashboard (React)
@@ -176,4 +176,4 @@ Please add tests for any new functionality you introduce. We aim for >80% code c
 
 ## Questions?
 
-Open a [GitHub Discussion](https://github.com/darisadam/PagerDam/discussions) or check existing [Issues](https://github.com/darisadam/PagerDam/issues).
+Open a [GitHub Discussion](https://github.com/darisadam/alertdam/discussions) or check existing [Issues](https://github.com/darisadam/alertdam/issues).

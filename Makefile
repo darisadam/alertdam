@@ -1,10 +1,10 @@
 # =============================================================================
-# PagerDam — Makefile
+# AlertDam — Makefile
 # =============================================================================
 
 .PHONY: help dev build test lint clean docker docker-down migrate
 
-BINARY_NAME=pagerdam
+BINARY_NAME=alertdam
 BACKEND_DIR=./backend
 WEB_DIR=./web
 MOBILE_DIR=./mobile
@@ -28,13 +28,13 @@ dev-web: ## Start the React web dashboard dev server
 # Build
 # -----------------------------------------------------------------------------
 build: ## Build the Go backend binary
-	cd $(BACKEND_DIR) && go build -o bin/$(BINARY_NAME) ./cmd/pagerdam/...
+	cd $(BACKEND_DIR) && go build -o bin/$(BINARY_NAME) ./cmd/alertdam/...
 
 build-web: ## Build the React web dashboard for production
 	cd $(WEB_DIR) && npm run build
 
 build-docker: ## Build the Docker image
-	docker build -f deploy/docker/Dockerfile -t pagerdam:latest .
+	docker build -f deploy/docker/Dockerfile -t alertdam:latest .
 
 # -----------------------------------------------------------------------------
 # Testing
@@ -64,10 +64,10 @@ vet: ## Run go vet
 # Database
 # -----------------------------------------------------------------------------
 migrate-up: ## Run all pending database migrations
-	cd $(BACKEND_DIR) && go run ./cmd/pagerdam/... migrate up
+	cd $(BACKEND_DIR) && go run ./cmd/alertdam/... migrate up
 
 migrate-down: ## Roll back the last migration
-	cd $(BACKEND_DIR) && go run ./cmd/pagerdam/... migrate down
+	cd $(BACKEND_DIR) && go run ./cmd/alertdam/... migrate down
 
 # -----------------------------------------------------------------------------
 # Docker

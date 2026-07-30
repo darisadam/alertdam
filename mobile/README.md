@@ -1,4 +1,4 @@
-# Mobile App — PagerDam
+# Mobile App — AlertDam
 
 Flutter mobile app (iOS + Android) for critical incident alerting with native DND bypass and iOS Critical Alerts.
 

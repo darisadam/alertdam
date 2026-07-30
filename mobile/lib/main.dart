@@ -41,18 +41,18 @@ Future<void> main() async {
 
   runApp(
     const ProviderScope(
-      child: PagerDamApp(),
+      child: AlertDamApp(),
     ),
   );
 }
 
-class PagerDamApp extends StatelessWidget {
-  const PagerDamApp({super.key});
+class AlertDamApp extends StatelessWidget {
+  const AlertDamApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'PagerDam',
+      title: 'AlertDam',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -77,7 +77,7 @@ class HomePage extends StatelessWidget {
         title: const Row(
           children: [
             Text('🚨 ', style: TextStyle(fontSize: 20)),
-            Text('PagerDam', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('AlertDam', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         backgroundColor: const Color(0xFF111827),
@@ -93,7 +93,7 @@ class HomePage extends StatelessWidget {
             ),
             SizedBox(height: 16),
             Text(
-              'PagerDam',
+              'AlertDam',
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,

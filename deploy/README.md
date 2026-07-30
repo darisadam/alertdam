@@ -1,4 +1,4 @@
-# Deploy — PagerDam
+# Deploy — AlertDam
 
 Deployment manifests for various environments.
 
@@ -27,8 +27,8 @@ See the [deployment guide](../docs/deployment.md) for production configuration.
 
 ```bash
 # From repository root
-docker build -f deploy/docker/Dockerfile -t pagerdam:latest .
-docker build -f deploy/docker/Dockerfile -t pagerdam:0.1.0 .
+docker build -f deploy/docker/Dockerfile -t alertdam:latest .
+docker build -f deploy/docker/Dockerfile -t alertdam:0.1.0 .
 ```
 
 The image uses a **multi-stage build**:

@@ -10,7 +10,16 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/darisadam/pagerdam/internal/api"
+	"github.com/darisadam/alertdam/internal/api"
+)
+
+// Build metadata, injected at link time via -ldflags -X. Declaring these is
+// what makes the Dockerfile's and GoReleaser's -X flags take effect; the Go
+// linker silently ignores -X for a symbol that does not exist.
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
 
 func main() {
@@ -31,7 +40,7 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("🚨 PagerDam starting on port %s", port)
+		log.Printf("🚨 AlertDam %s (commit %s, built %s) starting on port %s", version, commit, date, port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("failed to start server: %v", err)
 		}
@@ -42,7 +51,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down PagerDam...")
+	log.Println("Shutting down AlertDam...")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -50,5 +59,5 @@ func main() {
 		log.Fatalf("server forced to shutdown: %v", err)
 	}
 
-	log.Println("PagerDam stopped.")
+	log.Println("AlertDam stopped.")
 }

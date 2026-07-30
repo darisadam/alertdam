@@ -1,5 +1,5 @@
-name: pagerdam_mobile
-description: "PagerDam mobile app — on-call alerting with iOS Critical Alerts and Android DND bypass."
+name: alertdam_mobile
+description: "AlertDam mobile app — on-call alerting with iOS Critical Alerts and Android DND bypass."
 publish_to: 'none'
 version: 0.1.0+1
 

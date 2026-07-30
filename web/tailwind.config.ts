@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // PagerDam brand colors
+        // AlertDam brand colors
         brand: {
           50:  '#fef2f2',
           100: '#fee2e2',

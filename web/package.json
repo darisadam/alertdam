@@ -1,7 +1,7 @@
 {
-  "name": "pagerdam-web",
+  "name": "alertdam-web",
   "version": "0.1.0",
-  "description": "PagerDam Web Dashboard — React + Vite + Tailwind CSS",
+  "description": "AlertDam Web Dashboard — React + Vite + Tailwind CSS",
   "private": true,
   "scripts": {
     "dev": "vite",

@@ -1,12 +1,16 @@
+# Pinning the project name decouples the Compose project (and therefore the
+# volume and network name prefixes) from the checkout directory name. Without
+# it, cloning into a differently-named directory orphans your data volume.
+name: alertdam
+
 services:
   # =============================================================================
-  # PagerDam Go Backend
+  # AlertDam Go Backend
   # =============================================================================
-  pagerdam:
+  app:
     build:
       context: .
       dockerfile: deploy/docker/Dockerfile
-    container_name: pagerdam
     restart: unless-stopped
     ports:
       - "${APP_PORT:-8080}:8080"
@@ -14,8 +18,8 @@ services:
       - APP_ENV=${APP_ENV:-development}
       - APP_PORT=8080
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost:8080}
-      - DATABASE_URL=postgres://${POSTGRES_USER:-pagerdam}:${POSTGRES_PASSWORD:-pagerdam}@db:5432/${POSTGRES_DB:-pagerdam}?sslmode=disable
-      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-alertdam}:${POSTGRES_PASSWORD:-alertdam}@db:5432/${POSTGRES_DB:-alertdam}?sslmode=disable
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set — copy .env.example to .env and generate one}
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
       - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET:-}
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
@@ -23,50 +27,63 @@ services:
       - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}
+      - FIREBASE_CREDENTIALS_FILE=${FIREBASE_CREDENTIALS_FILE:-}
       - FEATURE_DISCORD=${FEATURE_DISCORD:-true}
       - FEATURE_TELEGRAM=${FEATURE_TELEGRAM:-true}
       - FEATURE_SLACK=${FEATURE_SLACK:-true}
-    volumes:
-      - ./service-account.json:/app/service-account.json:ro
+    # The Firebase service-account file is mounted only when you opt in, via a
+    # compose profile. A plain bind mount of a non-existent path makes Docker
+    # silently create a *directory* at ./service-account.json.
+    # To use FCM: place the file at ./service-account.json, set
+    # FIREBASE_CREDENTIALS_FILE=/app/service-account.json in .env, then run
+    #   docker compose --profile fcm up -d
     depends_on:
       db:
         condition: service_healthy
     networks:
-      - pagerdam-net
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+      - internal
+    # No container healthcheck: the runtime image is `scratch`, which has no
+    # shell and no wget, so any CMD-based probe can never succeed and the
+    # container would sit permanently `unhealthy`. Probe from the host instead:
+    #   curl -fsS http://localhost:8080/health
+    # A HEALTHCHECK can return once the binary grows a `healthcheck` subcommand.
+
+  # Same image and config as `app`, plus the FCM credential mount.
+  # Enabled with: docker compose --profile fcm up -d
+  app-fcm:
+    profiles: ["fcm"]
+    extends:
+      service: app
+    volumes:
+      - ./service-account.json:/app/service-account.json:ro
 
   # =============================================================================
   # PostgreSQL Database
   # =============================================================================
   db:
     image: postgres:16-alpine
-    container_name: pagerdam-db
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-pagerdam}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pagerdam}
-      - POSTGRES_DB=${POSTGRES_DB:-pagerdam}
+      - POSTGRES_USER=${POSTGRES_USER:-alertdam}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-alertdam}
+      - POSTGRES_DB=${POSTGRES_DB:-alertdam}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - pagerdam-net
+      - internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pagerdam} -d ${POSTGRES_DB:-pagerdam}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-alertdam} -d ${POSTGRES_DB:-alertdam}"]
       interval: 10s
       timeout: 5s
       retries: 5
     ports:
-      - "5432:5432"  # Expose for local dev — remove in production
+      # Local dev convenience only. Remove, or bind to 127.0.0.1, in production.
+      - "127.0.0.1:5432:5432"
 
 volumes:
   postgres_data:
     driver: local
 
 networks:
-  pagerdam-net:
+  internal:
     driver: bridge
