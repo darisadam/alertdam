@@ -180,14 +180,42 @@ gh api repos/darisadam/alertdam/private-vulnerability-reporting
 
 | Feature | State |
 |---|---|
-| Secret scanning | enabled |
+| Secret Protection (secret scanning) | enabled |
 | Secret scanning push protection | enabled |
+| Dependency graph | enabled |
 | Dependabot alerts | enabled |
 | Dependabot security updates | enabled |
+| Dependabot **malware** alerts | enabled |
+| **Grouped** security updates | enabled |
 | Private vulnerability reporting | enabled |
-| Secret scanning non-provider patterns | **unavailable** — a GitHub Advanced Security feature, not offered on a personal free account |
-| Secret scanning validity checks | **unavailable** — same reason |
 | Code scanning | CodeQL via the committed `codeql.yml` (advanced setup, for a stable required-check name) |
+| Secret scanning non-provider patterns | **unavailable on this plan** |
+| Secret scanning validity checks | **unavailable on this plan** |
+
+The last two are worth explaining, because the API is misleading about them: a
+`PATCH` setting `secret_scanning_non_provider_patterns` or
+`secret_scanning_validity_checks` returns **HTTP 200 and silently does nothing**.
+Confirmed in the UI that this is a plan limit and not a malformed payload — the
+Advanced Security settings page for this repository renders no secret-scanning
+sub-options at all. They are GitHub Advanced Security features and are not offered
+on a personal free account.
+
+Two features have no REST endpoint at all and were enabled through the UI:
+**Dependabot malware alerts** (alerts when malware is detected in a dependency)
+and **grouped security updates**. The latter matters because
+`.github/dependabot.yml` groups *version* updates only — **security** updates
+ignore that file entirely, so without this toggle each advisory opens its own PR.
+
+Audit all of it in one call:
+
+```bash
+gh api repos/darisadam/alertdam --jq '.security_and_analysis'
+```
+
+Note that call does **not** report malware alerts or grouped security updates.
+Those are only visible at
+`/settings/security_analysis`, where a button reading `Disable` means the feature
+is currently on.
 
 ---
 
@@ -347,9 +375,17 @@ workflow should expect the same one-PR delay.
   from a misconfigured ruleset is disabling it. Documented in GOVERNANCE.md.
 - **`require_code_owner_review` is off.** With one code owner it would demand an
   approval only that person could give. Turn it on when a second maintainer joins.
-- **The social preview image must be uploaded through the web UI.** There is no
-  REST endpoint for it — the only part of this configuration that is not
-  scriptable.
+- **Three settings are UI-only, with no REST endpoint**, so they are the parts of
+  this configuration that cannot be scripted or drift-checked: the social preview
+  image, Dependabot malware alerts, and grouped security updates. All three are
+  currently set; re-check them by eye after any repository transfer or visibility
+  change. The social preview is `docs/assets/social-preview.png`, rendered from
+  `social-preview.svg` — verify it is actually live with:
+  ```bash
+  # A custom image is served from repository-images.githubusercontent.com;
+  # the auto-generated fallback comes from opengraph.githubassets.com.
+  curl -s https://github.com/darisadam/alertdam | grep -o 'og:image[^>]*' | head -1
+  ```
 - **release-please needs a GitHub App before the first release.** Events created
   by `GITHUB_TOKEN` do not trigger workflows, so a release PR opened with it gets
   no CI and is unmergeable while required checks are on. See the comment at the
