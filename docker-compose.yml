@@ -1,0 +1,72 @@
+services:
+  # =============================================================================
+  # PagerDam Go Backend
+  # =============================================================================
+  pagerdam:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile
+    container_name: pagerdam
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - APP_PORT=8080
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:8080}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-pagerdam}:${POSTGRES_PASSWORD:-pagerdam}@db:5432/${POSTGRES_DB:-pagerdam}?sslmode=disable
+      - JWT_SECRET=${JWT_SECRET}
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
+      - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET:-}
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}
+      - FEATURE_DISCORD=${FEATURE_DISCORD:-true}
+      - FEATURE_TELEGRAM=${FEATURE_TELEGRAM:-true}
+      - FEATURE_SLACK=${FEATURE_SLACK:-true}
+    volumes:
+      - ./service-account.json:/app/service-account.json:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - pagerdam-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # =============================================================================
+  # PostgreSQL Database
+  # =============================================================================
+  db:
+    image: postgres:16-alpine
+    container_name: pagerdam-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-pagerdam}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pagerdam}
+      - POSTGRES_DB=${POSTGRES_DB:-pagerdam}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pagerdam-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pagerdam} -d ${POSTGRES_DB:-pagerdam}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"  # Expose for local dev — remove in production
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  pagerdam-net:
+    driver: bridge
