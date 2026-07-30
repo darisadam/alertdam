@@ -88,24 +88,56 @@ func handleEscalateIncident(w http.ResponseWriter, r *http.Request) {
 	respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"})
 }
 
-func handleListSchedules(w http.ResponseWriter, r *http.Request)   { respond(w, http.StatusOK, []any{}) }
-func handleCreateSchedule(w http.ResponseWriter, r *http.Request)  { respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"}) }
-func handleGetSchedule(w http.ResponseWriter, r *http.Request)     { respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"}) }
-func handleUpdateSchedule(w http.ResponseWriter, r *http.Request)  { respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"}) }
-func handleDeleteSchedule(w http.ResponseWriter, r *http.Request)  { respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"}) }
-func handleScheduleIcal(w http.ResponseWriter, r *http.Request)    { respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"}) }
-func handleListPolicies(w http.ResponseWriter, r *http.Request)    { respond(w, http.StatusOK, []any{}) }
-func handleCreatePolicy(w http.ResponseWriter, r *http.Request)    { respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"}) }
-func handleUpdatePolicy(w http.ResponseWriter, r *http.Request)    { respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"}) }
-func handleDeletePolicy(w http.ResponseWriter, r *http.Request)    { respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"}) }
-func handleAlertmanagerWebhook(w http.ResponseWriter, r *http.Request) { respond(w, http.StatusAccepted, map[string]string{"status": "accepted"}) }
-func handleGrafanaWebhook(w http.ResponseWriter, r *http.Request)      { respond(w, http.StatusAccepted, map[string]string{"status": "accepted"}) }
-func handleDatadogWebhook(w http.ResponseWriter, r *http.Request)      { respond(w, http.StatusAccepted, map[string]string{"status": "accepted"}) }
-func handleGenericWebhook(w http.ResponseWriter, r *http.Request)      { respond(w, http.StatusAccepted, map[string]string{"status": "accepted"}) }
-func handleSlackAction(w http.ResponseWriter, r *http.Request)         { respond(w, http.StatusOK, map[string]string{"status": "ok"}) }
-func handleSlackEvent(w http.ResponseWriter, r *http.Request)          { respond(w, http.StatusOK, map[string]string{"status": "ok"}) }
-func handleDiscordWebhook(w http.ResponseWriter, r *http.Request)      { respond(w, http.StatusOK, map[string]string{"status": "ok"}) }
-func handleTelegramWebhook(w http.ResponseWriter, r *http.Request)     { respond(w, http.StatusOK, map[string]string{"status": "ok"}) }
+func handleListSchedules(w http.ResponseWriter, r *http.Request) { respond(w, http.StatusOK, []any{}) }
+func handleCreateSchedule(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"})
+}
+func handleGetSchedule(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"})
+}
+func handleUpdateSchedule(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"})
+}
+func handleDeleteSchedule(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"})
+}
+func handleScheduleIcal(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"})
+}
+func handleListPolicies(w http.ResponseWriter, r *http.Request) { respond(w, http.StatusOK, []any{}) }
+func handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"})
+}
+func handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"})
+}
+func handleDeletePolicy(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusNotImplemented, map[string]string{"error": "not implemented"})
+}
+func handleAlertmanagerWebhook(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusAccepted, map[string]string{"status": "accepted"})
+}
+func handleGrafanaWebhook(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusAccepted, map[string]string{"status": "accepted"})
+}
+func handleDatadogWebhook(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusAccepted, map[string]string{"status": "accepted"})
+}
+func handleGenericWebhook(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusAccepted, map[string]string{"status": "accepted"})
+}
+func handleSlackAction(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+func handleSlackEvent(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+func handleDiscordWebhook(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+func handleTelegramWebhook(w http.ResponseWriter, r *http.Request) {
+	respond(w, http.StatusOK, map[string]string{"status": "ok"})
+}
 
 // respond writes a JSON response.
 func respond(w http.ResponseWriter, status int, data any) {
