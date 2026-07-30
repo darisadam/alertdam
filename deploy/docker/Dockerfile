@@ -8,7 +8,7 @@
 # That makes `docker buildx build --platform linux/amd64,linux/arm64` fast
 # without QEMU emulation, which would otherwise be 5-20x slower here.
 # =============================================================================
-FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
 
 # Provided automatically by buildx.
 ARG TARGETOS
