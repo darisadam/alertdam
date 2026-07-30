@@ -1,0 +1,132 @@
+# Lefthook — git hook manager.
+# https://lefthook.dev
+#
+# Install with `make setup` (or `lefthook install`).
+#
+# Why lefthook and not husky/pre-commit: it is a single static Go binary that
+# installs via brew, go install, npm, pip, mise or a raw release download. A
+# backend-only or Flutter-only contributor never has to acquire a Node or Python
+# runtime just to commit.
+#
+# All validator *logic* lives in scripts/git/*.sh and is invoked identically by
+# CI, so `git commit --no-verify` only defers the failure — it cannot avoid it.
+#
+# Notes for editing this file (lefthook v2):
+#   - `root:` does NOT apply to `glob:` — globs are always repo-root relative.
+#   - `stage_fixed: true` re-runs `git add`, which defeats partial staging
+#     (`git add -p`). It is only used on formatters.
+#   - pre-push stdin can be read once, so the branch-name check and the
+#     protected-ref check share one script.
+
+min_version: 2.1.0
+assert_lefthook_installed: true
+
+output:
+  - meta
+  - summary
+  - failure
+
+commit-msg:
+  jobs:
+    - name: conventional-commit
+      run: sh scripts/git/commit-msg-lint.sh {1}
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: secrets
+      run: gitleaks git --staged . --config .gitleaks.toml --redact --no-banner
+      skip:
+        - run: "! command -v gitleaks >/dev/null 2>&1"
+
+    - name: forbidden-files
+      run: sh scripts/git/reject-secrets-files.sh {staged_files}
+
+    - name: conflict-markers
+      run: sh scripts/git/no-conflict-markers.sh {staged_files}
+
+    - name: trailing-whitespace
+      run: git diff --cached --check
+
+    - name: shellcheck
+      glob: "*.sh"
+      run: shellcheck -s sh {staged_files}
+      skip:
+        - run: "! command -v shellcheck >/dev/null 2>&1"
+
+    - name: actionlint
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: actionlint
+      skip:
+        - run: "! command -v actionlint >/dev/null 2>&1"
+
+    # --- Go ---
+    - name: gofmt
+      root: backend/
+      glob: "backend/**/*.go"
+      run: gofmt -s -w {staged_files}
+      stage_fixed: true
+
+    - name: go-vet
+      root: backend/
+      glob: "backend/**/*.go"
+      run: go vet ./...
+
+    - name: golangci-lint
+      root: backend/
+      glob: "backend/**/*.go"
+      run: golangci-lint run --new-from-rev=origin/main
+      skip:
+        - run: "! command -v golangci-lint >/dev/null 2>&1"
+
+    # --- Web ---
+    - name: eslint
+      root: web/
+      glob: "web/**/*.{ts,tsx}"
+      run: npx --no -- eslint --fix --max-warnings 0 {staged_files}
+      stage_fixed: true
+      skip:
+        - run: "test ! -d web/node_modules"
+
+    - name: prettier
+      root: web/
+      glob: "web/**/*.{ts,tsx,css,json,html}"
+      run: npx --no -- prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+      skip:
+        - run: "test ! -d web/node_modules"
+
+    # --- Mobile ---
+    - name: dart-format
+      root: mobile/
+      glob: "mobile/**/*.dart"
+      run: dart format {staged_files}
+      stage_fixed: true
+      skip:
+        - run: "! command -v dart >/dev/null 2>&1"
+
+pre-push:
+  parallel: false
+  jobs:
+    # Must come first: reads stdin, which can only be consumed once.
+    - name: guard-protected-refs
+      run: sh scripts/git/pre-push-guard.sh
+      use_stdin: true
+
+    - name: secrets-range
+      run: gitleaks git . --config .gitleaks.toml --redact --no-banner --log-opts="origin/main..HEAD"
+      skip:
+        - run: "! command -v gitleaks >/dev/null 2>&1"
+        - run: "! git rev-parse --verify origin/main >/dev/null 2>&1"
+
+    - name: go-test
+      root: backend/
+      glob: "backend/**/*.go"
+      run: go build ./... && go test ./... -count=1
+
+    - name: web-typecheck
+      root: web/
+      glob: "web/**/*.{ts,tsx}"
+      run: npm run type-check
+      skip:
+        - run: "test ! -d web/node_modules"

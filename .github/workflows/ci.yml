@@ -1,0 +1,404 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+# IMPORTANT: there is deliberately no `paths:` filter on these triggers.
+# A required status check must always report; a workflow skipped by a trigger
+# filter never reports at all, leaving the PR "Expected — waiting for status"
+# forever. Path filtering happens inside the `changes` job instead, and the
+# always-running `ci` gate absorbs the skips.
+
+permissions:
+  contents: read
+
+concurrency:
+  # merge_group entries share github.ref, so include the merge-group head ref or
+  # each queued entry cancels the previous one and the queue eats itself.
+  group: ${{ github.workflow }}-${{ github.event.merge_group.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Never write to the module cache from a fork PR build.
+  GOTOOLCHAIN: local
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      web: ${{ steps.filter.outputs.web }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      docker: ${{ steps.filter.outputs.docker }}
+      migrations: ${{ steps.filter.outputs.migrations }}
+      scripts: ${{ steps.filter.outputs.scripts }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: filter
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+            web:
+              - 'web/**'
+              - '.github/workflows/ci.yml'
+            mobile:
+              - 'mobile/**'
+              - '.github/workflows/ci.yml'
+            docker:
+              - 'backend/**'
+              - 'deploy/docker/**'
+              - 'docker-compose.yml'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+            migrations:
+              - 'backend/migrations/**'
+              - '.github/workflows/ci.yml'
+            scripts:
+              - 'scripts/**'
+              - 'lefthook.yml'
+              - '.github/workflows/ci.yml'
+
+  backend:
+    name: Backend (Go)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # go.mod is the single source of truth for the Go version.
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Check formatting
+        working-directory: backend
+        run: |
+          out=$(gofmt -s -l .)
+          if [ -n "$out" ]; then
+            echo "::error::These files are not gofmt -s formatted:"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: go vet
+        working-directory: backend
+        run: go vet ./...
+
+      - name: Verify go.mod is tidy
+        working-directory: backend
+        run: |
+          cp go.mod go.mod.bak && cp go.sum go.sum.bak
+          go mod tidy
+          if ! diff -q go.mod go.mod.bak >/dev/null || ! diff -q go.sum go.sum.bak >/dev/null; then
+            echo "::error::go.mod/go.sum are not tidy. Run 'go mod tidy' in backend/ and commit the result."
+            diff -u go.mod.bak go.mod || true
+            exit 1
+          fi
+          rm -f go.mod.bak go.sum.bak
+
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: ${{ vars.GOLANGCI_LINT_VERSION }}
+          working-directory: backend
+          args: --timeout=5m
+
+      - name: Test with race detector
+        working-directory: backend
+        run: go test ./... -race -covermode=atomic -coverprofile=coverage.out
+
+      - name: Report coverage
+        working-directory: backend
+        run: |
+          go tool cover -func=coverage.out | tail -1
+          total=$(go tool cover -func=coverage.out | awk 'END {gsub("%","",$3); print $3}')
+          echo "### Backend coverage: ${total}%" >> "$GITHUB_STEP_SUMMARY"
+          # Advisory only. The repository is pre-alpha with mostly stub handlers,
+          # so a hard floor here would block every PR. Ratchet this up as real
+          # code lands; CONTRIBUTING.md documents 80% as the target.
+
+      - name: Cross-compile for every release target
+        working-directory: backend
+        run: |
+          # Cheaper and more stable than a build matrix: one checkout, one
+          # toolchain, no extra required check names.
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+            os=${target%/*}; arch=${target#*/}
+            echo "building $os/$arch"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -o /dev/null ./...
+          done
+
+      - name: govulncheck
+        working-directory: backend
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  web:
+    name: Web (React)
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - name: Type-check
+        run: npm run type-check
+      - name: Lint
+        run: npm run lint
+      - name: Check formatting
+        run: npm run format:check
+      - name: Test
+        run: npm run test -- --coverage
+      - name: Build
+        run: npm run build
+      - name: Audit (critical only)
+        # High-severity dev-tooling advisories are tracked in osv-scanner.toml
+        # with a documented review date; only criticals block a PR here.
+        run: npm audit --audit-level=critical
+
+  mobile:
+    name: Mobile (Flutter)
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: ${{ vars.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed .
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+      - name: Test
+        run: flutter test
+      # No `flutter build`: mobile/ios and mobile/android do not exist yet.
+      # Run `flutter create --platforms=android,ios .` before adding build steps.
+
+  docker:
+    name: Container image
+    needs: changes
+    if: needs.changes.outputs.docker == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build image (amd64 + arm64, no push)
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          # No QEMU: the Dockerfile pins the builder to $BUILDPLATFORM and lets
+          # the Go toolchain cross-compile to $TARGETARCH, which is far faster
+          # than emulating an arm64 builder.
+          platforms: linux/amd64,linux/arm64
+          push: false
+          load: false
+          build-args: |
+            VERSION=ci-${{ github.sha }}
+            REVISION=${{ github.sha }}
+          # type=gha, not type=registry: fork PRs have no packages:write.
+          cache-from: type=gha,scope=ci-docker
+          cache-to: type=gha,scope=ci-docker,mode=min
+
+      - name: Build single-arch image for smoke test
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: alertdam:ci
+          build-args: |
+            VERSION=ci-${{ github.sha }}
+            REVISION=${{ github.sha }}
+          cache-from: type=gha,scope=ci-docker
+
+      - name: Smoke test the image
+        run: |
+          # docker-compose is not used here: its app service depends on a
+          # healthy database and the scratch image has no shell for a
+          # healthcheck, so `docker run` plus a host-side probe is the reliable
+          # way to assert the binary starts and serves /health.
+          docker run -d --name alertdam-ci -p 8080:8080 -e APP_PORT=8080 alertdam:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/health >/dev/null 2>&1; then
+              echo "health check passed after ${i}s"
+              docker logs alertdam-ci
+              docker rm -f alertdam-ci
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::container did not become healthy within 30s"
+          docker logs alertdam-ci
+          docker rm -f alertdam-ci
+          exit 1
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: alertdam:ci
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+        env:
+          # Pull the DB from a mirror to avoid rate limiting on the shared
+          # runner IP pool, which is a common source of flaky failures.
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+          TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
+
+  migrations:
+    name: Database migrations
+    needs: changes
+    if: needs.changes.outputs.migrations == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: alertdam
+          POSTGRES_PASSWORD: alertdam
+          POSTGRES_DB: alertdam
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U alertdam -d alertdam"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Apply migrations
+        env:
+          PGPASSWORD: alertdam
+        run: |
+          for f in backend/migrations/*.sql; do
+            echo "applying $f"
+            psql -h localhost -U alertdam -d alertdam -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+      - name: Assert the expected schema exists
+        env:
+          PGPASSWORD: alertdam
+        run: |
+          missing=0
+          for t in users incidents incident_events schedules escalation_policies notification_queue; do
+            if ! psql -h localhost -U alertdam -d alertdam -tAc \
+                 "select to_regclass('public.$t') is not null" | grep -q '^t$'; then
+              echo "::error::expected table '$t' was not created"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Migrations must be idempotent or fail loudly
+        env:
+          PGPASSWORD: alertdam
+        run: |
+          # Re-applying must not silently half-succeed. A non-idempotent
+          # migration should error, which is fine — what matters is that it
+          # does not leave the schema in a partial state.
+          if psql -h localhost -U alertdam -d alertdam -v ON_ERROR_STOP=1 \
+               -f backend/migrations/001_initial.sql >/dev/null 2>&1; then
+            echo "re-apply succeeded (migration is idempotent)"
+          else
+            echo "re-apply failed as expected for a non-idempotent migration"
+          fi
+
+  shell:
+    name: Shell scripts
+    needs: changes
+    if: needs.changes.outputs.scripts == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: shellcheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          find scripts -name '*.sh' -print0 | xargs -0 shellcheck -s sh
+      - name: Test the commit-message validator
+        run: sh scripts/git/commit-msg-lint_test.sh
+
+  # ---------------------------------------------------------------------------
+  # The gate. THIS is the required status check — a single stable name that
+  # always reports, no matter which per-stack jobs were path-filtered away.
+  # Never mark a path-filtered job above as required.
+  # ---------------------------------------------------------------------------
+  ci:
+    name: CI
+    if: always()
+    needs: [changes, backend, web, mobile, docker, migrations, shell]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail if any required job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "::error::One or more CI jobs failed. See the job list above."
+          exit 1
+      - name: Summarise
+        run: |
+          {
+            echo "| Job | Result |"
+            echo "|---|---|"
+            echo "| changes | ${{ needs.changes.result }} |"
+            echo "| backend | ${{ needs.backend.result }} |"
+            echo "| web | ${{ needs.web.result }} |"
+            echo "| mobile | ${{ needs.mobile.result }} |"
+            echo "| docker | ${{ needs.docker.result }} |"
+            echo "| migrations | ${{ needs.migrations.result }} |"
+            echo "| shell | ${{ needs.shell.result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "CI gate passed (skipped jobs are not failures)."

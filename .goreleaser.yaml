@@ -1,0 +1,104 @@
+# GoReleaser builds and publishes the cross-platform binaries.
+#
+# It is the *builder*, not the version decider — release-please computes the
+# version and creates the tag, and `release.mode: append` attaches these assets
+# to the GitHub Release that already exists rather than creating a competing one.
+version: 2
+
+project_name: alertdam
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: alertdam
+    dir: backend
+    main: ./cmd/alertdam
+    binary: alertdam
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      # No practical demand, and it is the least-tested Go/Windows combination.
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .FullCommit }}
+      - -X main.date={{ .CommitDate }}
+    # -trimpath plus a commit-derived timestamp make the binaries byte-for-byte
+    # reproducible, which is what makes the provenance attestation independently
+    # verifiable rather than merely present.
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - id: default
+    ids: [alertdam]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+      - CHANGELOG.md
+      - src: backend/migrations/*.sql
+        dst: migrations
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+sboms:
+  - id: archive-sbom
+    artifacts: archive
+
+# Keyless signing of the checksum file. Verifying checksums.txt transitively
+# covers every archive listed in it.
+signs:
+  - cmd: cosign
+    certificate: '${artifact}.pem'
+    args:
+      - sign-blob
+      - '--output-certificate=${certificate}'
+      - '--output-signature=${signature}'
+      - '${artifact}'
+      - '--yes'
+    artifacts: checksum
+    output: true
+
+changelog:
+  # release-please owns CHANGELOG.md and the release notes. Letting GoReleaser
+  # generate its own would put two conflicting changelogs in one release.
+  disable: true
+
+release:
+  mode: append
+  footer: |
+    ---
+
+    ### Verifying this release
+
+    Binaries and container images are signed with Sigstore keyless signing. The
+    identity check below is the part that matters — without it, verification
+    passes for anything signed by any workflow in any repository.
+
+    ```bash
+    cosign verify-blob \
+      --certificate checksums.txt.pem \
+      --signature checksums.txt.sig \
+      --certificate-identity-regexp '^https://github\.com/darisadam/alertdam/\.github/workflows/release\.yml@refs/tags/v' \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+      checksums.txt
+
+    gh attestation verify oci://ghcr.io/darisadam/alertdam:{{ .Tag }} \
+      --repo darisadam/alertdam
+    ```

@@ -1,6 +1,131 @@
+# Dependabot version updates.
+#
+# The previous config watched only `github-actions` in `/` — and there were no
+# workflow files, so it was a complete no-op. The three dependency PRs that had
+# appeared came from repository-level *security* updates, which ignore this file
+# entirely.
+#
+# `commit-message.prefix: chore` + `include: scope` produces
+# "chore(deps): bump ...", which satisfies the commit-message linter by
+# construction. Do NOT write `prefix: "chore(deps)"` — `include: scope` appends
+# the scope, giving "chore(deps)(deps):" which fails the linter.
+#
+# Grouping is the biggest lever on PR volume here: five ungrouped ecosystems is
+# realistically 15-25 PRs a week; grouped it is 5-7.
 version: 2
+
 updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "weekly"
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Jakarta
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: ['dependencies', 'area/ci']
+    open-pull-requests-limit: 5
+    # Dependabot updates both the pinned SHA and the trailing "# vX.Y.Z" comment,
+    # which is the only thing that makes SHA pinning maintainable rather than an
+    # archaeology exercise.
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: gomod
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:15"
+      timezone: Asia/Jakarta
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: ['dependencies', 'area/backend']
+    open-pull-requests-limit: 5
+    groups:
+      go-minor-patch:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:30"
+      timezone: Asia/Jakarta
+    versioning-strategy: increase
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    labels: ['dependencies', 'area/web']
+    open-pull-requests-limit: 5
+    groups:
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom', 'react-router-dom']
+      tailwind:
+        patterns: ['tailwindcss', 'autoprefixer', 'postcss', 'prettier-plugin-tailwindcss']
+      lint-and-types:
+        dependency-type: development
+        patterns: ['eslint*', '@eslint/*', 'typescript*', 'globals', 'prettier*']
+      test-tooling:
+        dependency-type: development
+        patterns: ['vitest', '@vitest/*', '@testing-library/*', 'jsdom']
+      npm-minor-patch:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+
+  - package-ecosystem: pub
+    directory: /mobile
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:45"
+      timezone: Asia/Jakarta
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: ['dependencies', 'area/mobile']
+    open-pull-requests-limit: 3
+    groups:
+      firebase:
+        patterns: ['firebase_*']
+      riverpod:
+        patterns: ['*riverpod*']
+      pub-minor-patch:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+
+  # The Dockerfile's base image. `directory` points at the Dockerfile's folder.
+  - package-ecosystem: docker
+    directory: /deploy/docker
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Asia/Jakarta
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: ['dependencies', 'area/deploy']
+    open-pull-requests-limit: 3
+
+  # docker-compose is a SEPARATE ecosystem from docker; one entry cannot cover
+  # both, and this is what keeps postgres:16-alpine current.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Asia/Jakarta
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: ['dependencies', 'area/deploy']
+    open-pull-requests-limit: 3

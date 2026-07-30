@@ -1,0 +1,63 @@
+# Automatic release-note categorisation, keyed to the label taxonomy in
+# .github/labels.yml.
+#
+# Drives the "Generate release notes" button and `gh release --generate-notes`.
+# release-please owns CHANGELOG.md; this owns the GitHub Release page.
+#
+# ORDER MATTERS: a PR lands in the FIRST matching category, so `breaking-change`
+# must precede `type/feat`, and the '*' catch-all must be last.
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+      - type/style
+      - type/test
+    authors:
+      - dependabot
+      - dependabot[bot]
+      - github-actions
+      - github-actions[bot]
+      - release-please[bot]
+
+  categories:
+    - title: 🚨 Breaking Changes
+      labels: [breaking-change]
+
+    - title: 🔒 Security
+      labels: [security]
+
+    - title: ✨ Features
+      labels: [type/feat]
+
+    - title: 🐛 Bug Fixes
+      labels: [type/fix]
+
+    - title: ⚡ Performance
+      labels: [type/perf]
+
+    - title: 🏗️ Backend
+      labels: [area/backend]
+
+    - title: 🖥️ Web Dashboard
+      labels: [area/web]
+
+    - title: 📱 Mobile
+      labels: [area/mobile]
+
+    - title: 🗄️ Database
+      labels: [area/db]
+
+    - title: 🐳 Deployment
+      labels: [area/deploy]
+
+    - title: 📚 Documentation
+      labels: [type/docs, area/docs]
+
+    - title: 🧹 Maintenance
+      labels: [type/chore, type/refactor, area/ci]
+
+    - title: ⬆️ Dependencies
+      labels: [dependencies]
+
+    - title: Other Changes
+      labels: ['*']

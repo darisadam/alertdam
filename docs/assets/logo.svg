@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="AlertDam logo">
+  <title>AlertDam</title>
+  <!--
+    The mark: a dam wall (three stacked courses) holding back a rising level,
+    with an alert notch cut through it. Reads as "a dam that alerts" rather than
+    as a pager or a bell, which keeps it visually distinct from anything else in
+    this category.
+
+    Palette is the existing brand red #DC2626 (already in tailwind.config.ts and
+    the Flutter theme seed), deliberately not the green/teal family used by
+    incumbent incident-management tools.
+  -->
+  <defs>
+    <linearGradient id="ad-wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#B91C1C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Dam wall: three courses, tapering like a gravity dam -->
+  <g fill="url(#ad-wall)">
+    <rect x="20" y="30" width="88" height="20" rx="4"/>
+    <rect x="26" y="56" width="76" height="20" rx="4"/>
+    <rect x="32" y="82" width="64" height="20" rx="4"/>
+  </g>
+
+  <!-- Alert notch: a spillway breaking through all three courses -->
+  <path d="M70 24 L58 68 h13 l-9 40 26-50 H74z"
+        fill="#FCA5A5" stroke="#7F1D1D" stroke-width="2.5"
+        stroke-linejoin="round"/>
+</svg>

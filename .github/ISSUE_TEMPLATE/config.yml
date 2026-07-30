@@ -1,0 +1,23 @@
+# Blank issues are disabled so every report arrives with the triage fields
+# filled in. The contact links route everything that is not a defect elsewhere.
+blank_issues_enabled: false
+
+contact_links:
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/darisadam/alertdam/security/advisories/new
+    about: >-
+      Never report security issues in a public issue. AlertDam handles webhook
+      signing secrets, bot tokens and phone numbers — please use private
+      vulnerability reporting. See SECURITY.md.
+
+  - name: 💬 Ask a question
+    url: https://github.com/darisadam/alertdam/discussions/categories/q-a
+    about: Usage questions, configuration help and troubleshooting go in Discussions Q&A.
+
+  - name: 💡 Propose an idea
+    url: https://github.com/darisadam/alertdam/discussions/categories/ideas
+    about: For open-ended ideas that are not yet a concrete feature request.
+
+  - name: 📚 Read the documentation
+    url: https://github.com/darisadam/alertdam/tree/main/docs
+    about: Architecture, API reference and deployment guide.

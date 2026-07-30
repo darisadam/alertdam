@@ -1,0 +1,38 @@
+name: Dependency review
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          # AlertDam ships under Apache-2.0 and is explicitly positioned for
+          # corporate adoption without copyleft obligations. A strong-copyleft
+          # dependency would break that promise, so it fails the review.
+          deny-licenses: >-
+            GPL-1.0-or-later, GPL-2.0-or-later, GPL-3.0-or-later,
+            AGPL-1.0-or-later, AGPL-3.0-or-later,
+            LGPL-2.0-or-later, LGPL-3.0-or-later,
+            SSPL-1.0, BUSL-1.1, CC-BY-NC-4.0, CC-BY-NC-SA-4.0
+          # `never`: posting a PR comment needs pull-requests: write, which a
+          # fork PR's read-only token cannot be granted — the step would fail
+          # for exactly the contributors this project wants to attract. The
+          # findings are in the job summary instead.
+          comment-summary-in-pr: never
+          warn-only: false

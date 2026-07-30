@@ -1,0 +1,94 @@
+name: ✨ Feature request
+description: Propose a concrete capability for AlertDam.
+title: '[feat]: '
+labels: ['type/feat', 'status/needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For open-ended ideas, [Discussions → Ideas](https://github.com/darisadam/alertdam/discussions/categories/ideas)
+        is a better fit. Use this form when you can describe a specific change.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues and discussions for this idea.
+          required: true
+        - label: I checked the roadmap in the README — this is not already a planned phase item.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: >-
+        Describe the operational pain, not the solution. What happens today, and
+        why is it a problem at 3 AM?
+      placeholder: >-
+        When an incident is acknowledged in Slack, the on-call engineer on the
+        next rotation has no way to see who took it, so ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      multiple: true
+      options:
+        - Backend — alert ingestion & deduplication
+        - Backend — escalation engine
+        - Backend — on-call scheduling
+        - Backend — REST API / auth
+        - Integration — new chat platform
+        - Integration — new monitoring source
+        - Integration — existing platform, new capability
+        - Web dashboard (React)
+        - Mobile app
+        - Database / schema
+        - Deployment / operations
+        - Documentation
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Including "do nothing" — why is that not good enough?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Would this be a breaking change?
+      options:
+        - 'No'
+        - 'Yes — changes an API contract or payload shape'
+        - 'Yes — requires a database migration'
+        - 'Yes — changes configuration or environment variables'
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Are you willing to implement this?
+      options:
+        - 'Yes, I would like to open a PR'
+        - 'Yes, with guidance on where to start'
+        - 'No, but I can test it'
+        - 'No'
+    validations:
+      required: true

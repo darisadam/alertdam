@@ -1,0 +1,55 @@
+name: Dependabot auto-merge
+
+on:
+  # pull_request_target, not pull_request: workflows triggered by a Dependabot
+  # PR get a read-only GITHUB_TOKEN regardless of the `permissions:` block, even
+  # though Dependabot branches live in this repository rather than a fork.
+  # pull_request_target runs in the base-repo context with a normal token.
+  # Safe here: no checkout, and the actor is pinned in the `if:` below.
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  automerge:
+    name: Auto-merge Dependabot PR
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for patch and minor updates
+        if: |
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          steps.meta.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          # --auto queues the merge; it lands only once every required status
+          # check passes. Note this is auto-merge, NOT a bot approval:
+          # can_approve_pull_request_reviews is false on this repository, and
+          # having github-actions[bot] rubber-stamp dependency PRs would defeat
+          # the review policy rather than satisfy it. The main ruleset therefore
+          # requires 0 native approvals and relies on status checks as the gate.
+          gh pr merge --squash --auto "$PR_URL"
+          echo "auto-merge enabled for ${{ steps.meta.outputs.dependency-names }} (${{ steps.meta.outputs.update-type }})"
+
+      - name: Flag major updates for human review
+        if: steps.meta.outputs.update-type == 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr edit "$PR_URL" --add-label 'status/needs-review'
+          gh pr comment "$PR_URL" --body \
+            "Major version bump — not auto-merged. A maintainer needs to read the upstream changelog for breaking changes before this lands."

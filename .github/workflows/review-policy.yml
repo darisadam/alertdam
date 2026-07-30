@@ -1,0 +1,70 @@
+name: Review policy
+
+on:
+  # Must re-evaluate when a review is submitted or dismissed, not only when the
+  # PR changes — otherwise an external PR could never transition to passing.
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed, edited]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR number to re-evaluate
+        required: true
+        type: number
+
+permissions:
+  contents: read
+
+concurrency:
+  # Do NOT cancel in progress: a cancelled run would leave the commit status at
+  # `pending` forever, which blocks the PR.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || inputs.pr }}
+  cancel-in-progress: false
+
+jobs:
+  review-policy:
+    name: Review policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      # Publishes the `review-policy` commit status, which is the context the
+      # main ruleset requires. Using a commit status rather than this job's own
+      # check run means one workflow can update the same context regardless of
+      # which event triggered it.
+      statuses: write
+    steps:
+      # Base ref only. No fork code is fetched or executed.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.ref }}
+          persist-credentials: false
+
+      - name: Resolve the pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr }}
+        run: |
+          set -eu
+          gh api "repos/$REPO/pulls/$PR_NUMBER" \
+            --jq '"head_sha=" + .head.sha,
+                  "author_login=" + .user.login,
+                  "author_association=" + .author_association,
+                  "state=" + .state,
+                  "draft=" + (.draft | tostring)' >> "$GITHUB_OUTPUT"
+
+      - name: Evaluate
+        if: steps.pr.outputs.state == 'open'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          AUTHOR_LOGIN: ${{ steps.pr.outputs.author_login }}
+          AUTHOR_ASSOCIATION: ${{ steps.pr.outputs.author_association }}
+        run: sh scripts/ci/review-policy.sh

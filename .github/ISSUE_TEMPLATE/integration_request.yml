@@ -1,0 +1,102 @@
+name: 🔌 Integration request
+description: Request support for a new chat platform, monitoring source or notification channel.
+title: '[integration]: '
+labels: ['type/feat', 'area/integrations', 'status/needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Integrations are the most common request for a tool like this, so they
+        get their own form. The answers below are what determine whether an
+        integration is a weekend's work or a month's.
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform or service
+      placeholder: Mattermost / Zabbix / Opsgenie-compatible webhook / Gotify
+    validations:
+      required: true
+
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Direction
+      options:
+        - Outbound — AlertDam sends notifications to it
+        - Inbound — it sends alerts to AlertDam
+        - Bidirectional — notifications out, acknowledgements back
+    validations:
+      required: true
+
+  - type: input
+    id: docs
+    attributes:
+      label: Link to the API documentation
+      description: A direct link to the relevant endpoint or webhook reference.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Authentication model
+      options:
+        - Bot token / API key
+        - OAuth 2.0 app installation
+        - Webhook URL with a shared signing secret
+        - mTLS or client certificate
+        - No authentication
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: interactivity
+    attributes:
+      label: Does it support interactive message actions?
+      description: >-
+        Buttons that can acknowledge or resolve an incident. This is AlertDam's
+        core value proposition, so it materially changes the design.
+      options:
+        - 'Yes — buttons with a callback webhook'
+        - 'Yes — slash commands only'
+        - 'No — send-only'
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Is this available on the platform's free tier?
+      description: AlertDam deliberately targets teams on free chat plans.
+      options:
+        - 'Yes'
+        - 'No — paid plan required'
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: testing
+    attributes:
+      label: Can you provide a test environment?
+      description: >-
+        A workspace, server or trial account a maintainer can use. Integrations
+        are effectively unmaintainable without one.
+      options:
+        - 'Yes, I can provide access'
+        - 'Yes, and I can test PRs against it myself'
+        - 'No, but the platform has a free tier anyone can sign up for'
+        - 'No'
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Rate limits, message-size limits, existing OSS client libraries, prior art.
+    validations:
+      required: false
