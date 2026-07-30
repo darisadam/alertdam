@@ -32,7 +32,7 @@ dependencies:
   flutter_secure_storage: ^9.2.2
 
   # Date/time
-  intl: ^0.19.0
+  intl: ^0.20.3
 
   # UI
   cupertino_icons: ^1.0.8
