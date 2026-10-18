@@ -52,7 +52,7 @@
     "typescript-eslint": "^8.65.0",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.6.8",
-    "vitest": "^4.1.10",
+    "vitest": "^5.0.5",
     "@vitest/coverage-v8": "^4.1.10",
     "@testing-library/react": "^16.1.0",
     "@testing-library/jest-dom": "^6.6.3",
